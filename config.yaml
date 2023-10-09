@@ -1,0 +1,86 @@
+
+    # Paths to read and save data
+    parent_path: 
+    path_csv: 
+    TRAIN_PATH: data/
+    OUTPUT_DIR: 
+    
+    
+    # General Settings 
+    debug: false
+    device: cuda:0 
+    
+
+    # Hyperparameter
+    exp: myexp
+    num_workers: 4
+
+    # Data split
+    challenge_split: true
+    nfold : 5
+    trn_fold: 
+    - 0
+    - 1
+    - 2
+    - 3
+    - 4
+    
+    # Target column param 
+    col0: tri0
+    target_size: 131
+    target_col : multi_tri
+    multi: true
+
+
+    
+    # Model hyperparams
+    model_name: swin_base_patch4_window7_224   
+    pretrained: true
+    
+    
+    # Augmentation params
+    height: 224  
+    width:  224  
+    
+    
+    # Training params
+    epochs: 20
+    T_0: 21  # CosineAnnealingWarmRestarts
+    lr: 2e-4
+    min_lr: 2e-5
+    batch_size: 64
+    valid_batch_size: 64
+    weight_decay: 1e-6
+    seed: 142
+
+
+    # Self-distillation
+    SD: 0.9
+    do_SD : true
+
+    # Label smoothing
+    smooth : false
+    ls : 0.1
+    msmooth: false
+
+    
+    # Drop noisy frames
+    drop_all: False
+    drop_black: False
+    filter_black: true
+
+
+
+  
+    drop_all_train: False
+    drop_black_train : false
+   
+    test_inference: false
+
+    train_all: false
+
+    # Npetune logging
+    neplog: false
+    neptune_project: 
+    neptune_api_token:
+
