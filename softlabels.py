@@ -1,6 +1,9 @@
 import torch
 import os
 from torch.utils.data import DataLoader
+import hydra
+import warnings
+warnings.filterwarnings("ignore")
 
 from models import TripletModel
 from preprocess import get_folds
@@ -74,12 +77,9 @@ def inference(CFG):
         )
 
 
-import hydra
-import warnings
-
-warnings.filterwarnings("ignore")
 
 
+# Run the code
 @hydra.main(config_name="config")
 def generate(CFG):
     inference(CFG)

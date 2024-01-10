@@ -16,13 +16,6 @@ def get_folds(n_fold, CFG):
         clips = ["VID68", "VID70", "VID73", "VID74", "VID75"]
         train = train[~train.video.isin(clips)].reset_index(drop=True)
 
-    # Drop empty
-    if CFG.drop_all:
-        train = train[train.multi_tri != "[]"].reset_index(drop=True)
-
-    # Drop blacked frames
-    if CFG.drop_black:
-        train = train[train.black != 262144].reset_index(drop=True)
 
     # DEBUG: Reduce dataset size for faster iteration
     if CFG.debug:

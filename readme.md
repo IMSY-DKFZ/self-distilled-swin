@@ -24,15 +24,19 @@ pip install -r requirements.txt
 
 # 2- Dataset
 * CholecT45: You can request the dataset access [in the CholecT45 dataset's repository](https://github.com/CAMMA-public/cholect45):
-* Annotations: The metadata and annotations are parsed in one CSV file. You can download the CholecT45.csv file [here](https://drive.google.com/file/d/1Dp8dmpFXSIug3uxwnQXhcMeYd0N874PU/view?usp=sharing).
+* Annotations: The dataloader expects the annotations in a csv format, in order to generate the annotations csv file, run the following command
 
-Once the CholecT45.csv files is downloaded, create a new `dataframes` folder and move it to the `dataframes` folder following this tree structure:
+```
+python parse.py
+```
 
+
+Once the CholecT45.csv files is created, the final CholecT45 folder structure should be as following:
 - CholecT45
   - data
     - VID01
     - VID02
-    ...
+    - ...
   - dict
   - instrument
   - target
@@ -49,26 +53,30 @@ You'll need to adapt the `parent_path` and `output_dir` parameter in `config.yam
 ```
 parent_path: PATH/CholecT45
 output_dir:  path where to save the outputs
-path_csv: dataframes/CholecT45.csv (by default)
-
 ```
 
 # 3- Training
-Once the environment and the path to the dataset are settled, the method is a 3 steps method: Train a teacher model, generate soft labels, train the student model.
+Once the environment and the path to the dataset are settled, the method is a 3 steps method: Train a teacher model, generate soft-labels, train the student model.
 
-Step 1: Train a teacher model
+**NOTE: Make sure to use the parameter `exp` in each experiment to give a tag to your experiments. For ex: `exp=teacher`.**
+
+### Step 1: Train a teacher model
 
 ```
 python main.py target_size=131 epochs=20 distill=false exp=teacher
 ```
-Step 2: Generate the soft labels
+The checkpoints should be saved in the folder `output_dir/checkpoints` and the 5-Fold cross validation predictions in `output_dir/oofs`.
+
+### Step 2: Generate the soft-labels
 ```
 python softlabels.py target_size=131 exp=teacher
 ```
-Step 3: Train the student model
+The soft-labels should be saved in the folder `parent_path/CholecT45/soflabels`
+### Step 3: Train the student model
 ```
 python main.py target_size=131 epochs=40 distill=true exp=student
 ```
+The checkpoints should be saved in the folder `output_dir/checkpoints` and the 5-Fold cross validation predictions in `output_dir/oofs`.
 
 # 4- Evaluation
 **currently under development and will be made available shortly.**
