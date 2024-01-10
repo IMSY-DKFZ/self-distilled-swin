@@ -1,9 +1,9 @@
 
     # Paths to read and save data
-    parent_path: 
-    path_csv: 
-    TRAIN_PATH: data/
-    OUTPUT_DIR: 
+    parent_path:
+    path_csv: dataframes/CholecT45.csv
+    train_path: data/
+    output_dir:
     
     
     # General Settings 
@@ -13,11 +13,11 @@
 
     # Hyperparameter
     exp: myexp
-    num_workers: 4
+    nworkers: 4
 
     # Data split
     challenge_split: true
-    nfold : 5
+    n_fold : 5
     trn_fold: 
     - 0
     - 1
@@ -55,8 +55,8 @@
 
 
     # Self-distillation
-    SD: 0.9
-    do_SD : true
+    SD: 1
+    distill : False
 
     # Label smoothing
     smooth : false
@@ -69,18 +69,10 @@
     drop_black: False
     filter_black: true
 
-
-
-  
-    drop_all_train: False
-    drop_black_train : false
-   
+    # Leave out an independent test set of 5 videos
     test_inference: false
 
-    train_all: false
-
-    # Npetune logging
+    # Neptune logging
     neplog: false
     neptune_project: 
     neptune_api_token:
-

@@ -18,7 +18,7 @@ def seed_torch(seed=42):
 ### Table for printing results
 header = r"""
 
-Epoch |  loss | vloss | mAP | imAP | Time, m
+Epoch |  loss | vloss | mAP | Time, m
 """
 #          Epoch         metrics            time
-raw_line = "{:6d}" + "\u2502{:7.3f}" * 4 + "\u2502{:6.2f}"
+raw_line = "{:6d}" + "\u2502{:7.3f}" * 3 + "\u2502{:6.2f}"

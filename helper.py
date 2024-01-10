@@ -12,7 +12,6 @@ from torch.optim.lr_scheduler import (
 import torch.nn as nn
 
 
-
 # Helper functions
 class AverageMeter(object):
     """Computes and stores the average and current value"""
@@ -37,7 +36,7 @@ def train_fn(
     train_loader, model, CFG, criterion, optimizer, epoch, scheduler, device, scaler
 ):
     losses = AverageMeter()
-    
+
     # switch to train mode
     model.train()
 
@@ -48,14 +47,12 @@ def train_fn(
         images, labels = data
         batch_size = labels.size(0)
 
-
         # Start the optimizer
         optimizer.zero_grad()
 
         # Send the images and labels to gpu
         images = images.to(device)
         labels = labels.to(device)
-
 
         # Apply mixed precision
         with amp.autocast():
@@ -71,7 +68,7 @@ def train_fn(
 
         # Update the loss
         losses.update(loss.item(), batch_size)
- 
+
         # Backward pass
         scaler.scale(loss).backward()
         scaler.step(optimizer)
@@ -81,16 +78,16 @@ def train_fn(
 
 
 def valid_fn(valid_loader, model, CFG, criterion, device):
-    
+
     losses = AverageMeter()
     scores = AverageMeter()
-    
+
     # switch to evaluation mode
     model.eval()
-    
+
     # Start a list to store the predictions
     preds = []
-    
+
     # Loop over the dataloader
     for step, data in enumerate(valid_loader):
 
@@ -98,17 +95,15 @@ def valid_fn(valid_loader, model, CFG, criterion, device):
         images, labels = data
         batch_size = labels.size(0)
 
-
         # Send images and labels to gpu
         images = images.to(device)
         labels = labels.to(device)
 
         # Eval mode
         with torch.no_grad():
-            
+
             # Run the model on the validation set
             y_preds = model(images)
-           
 
         # Compute the validation loss on the triplets only
         loss = criterion(y_preds[:, :100], labels[:, :100])
@@ -118,7 +113,29 @@ def valid_fn(valid_loader, model, CFG, criterion, device):
 
         # Update predictions
         preds.append(y_preds.to("cpu").numpy())
-   
+
     # Concat and predictions
     predictions = np.concatenate(preds)
     return losses.avg, predictions
+
+
+def inference_fn(valid_loader, model, device):
+    losses = AverageMeter()
+    scores = AverageMeter()
+    # switch to evaluation mode
+    model.eval()
+    preds = []
+    for step, images in enumerate(valid_loader):
+
+        # measure data loading time
+        images = images.to(device)
+
+        # compute loss
+        with torch.no_grad():
+
+            y_preds = model(images)
+
+        preds.append(y_preds.sigmoid().to("cpu").numpy())
+
+    predictions = np.concatenate(preds)
+    return predictions
