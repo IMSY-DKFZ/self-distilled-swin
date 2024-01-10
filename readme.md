@@ -23,15 +23,15 @@ pip install -r requirements.txt
 
 
 # 2- Dataset
-* CholecT45: You can request the dataset access [in the CholecT45 dataset's repository](https://github.com/CAMMA-public/cholect45):
-* Annotations: The dataloader expects the annotations in a csv format, in order to generate the annotations csv file, run the following command
+* **CholecT45:** You can request the dataset access [in the CholecT45 dataset's repository](https://github.com/CAMMA-public/cholect45).
+* **Annotations:** The dataloader expects the annotations in a csv format, in order to generate the annotations csv file, run the following command
 
 ```
 python parse.py
 ```
 
 
-Once the CholecT45.csv files is created, the final CholecT45 folder structure should be as following:
+Once the CholecT45.csv file is generated, the final CholecT45 folder structure should be as following:
 - CholecT45
   - data
     - VID01
@@ -56,7 +56,7 @@ output_dir:  path where to save the outputs
 ```
 
 # 3- Training
-Once the environment and the path to the dataset are settled, the method is a 3 steps method: Train a teacher model, generate soft-labels, train the student model.
+Once the environment and the path to the dataset are settled, the method is a 3 steps process: Train a teacher model, generate soft-labels, train the student model.
 
 **NOTE: Make sure to use the parameter `exp` in each experiment to give a tag to your experiments. For ex: `exp=teacher`.**
 
@@ -65,7 +65,7 @@ Once the environment and the path to the dataset are settled, the method is a 3 
 ```
 python main.py target_size=131 epochs=20 distill=false exp=teacher
 ```
-The checkpoints should be saved in the folder `output_dir/checkpoints` and the 5-Fold cross validation predictions in `output_dir/oofs`.
+The checkpoints should be saved in the folder `output_dir/output/checkpoints` and the 5-Fold cross validation predictions in `output_dir/output/oofs`.
 
 ### Step 2: Generate the soft-labels
 ```
@@ -76,7 +76,7 @@ The soft-labels should be saved in the folder `parent_path/CholecT45/soflabels`
 ```
 python main.py target_size=131 epochs=40 distill=true exp=student
 ```
-The checkpoints should be saved in the folder `output_dir/checkpoints` and the 5-Fold cross validation predictions in `output_dir/oofs`.
+The checkpoints should be saved in the folder `output_dir/output/checkpoints` and the 5-Fold cross validation predictions in `output_dir/output/oofs`.
 
 # 4- Evaluation
 **currently under development and will be made available shortly.**
