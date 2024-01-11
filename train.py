@@ -146,7 +146,7 @@ def train_fnt(CFG):
                 print(f"Soft labels loaded successfully!")
 
                 # Apply label smoothing
-                if CFG.msmooth:
+                if CFG.smooth:
                     train_folds.iloc[:, tri0_idx : tri0_idx + CFG.sd_size] = (
                         train_folds.iloc[:, tri0_idx : tri0_idx + CFG.sd_size]
                         * (1.0 - CFG.ls)
