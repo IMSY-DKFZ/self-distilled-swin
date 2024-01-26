@@ -14,7 +14,7 @@ The "Self-Distilled-Swin" project presents a Swin Transformer model trained thro
 
 * First create a new environment:
 ```
-conda create -n sdswin python=3.9
+conda create -n sdswin python=3.7.0
 ```
 * Next, cd to the repo folder and install the requirements.txt file
 ```
@@ -64,36 +64,84 @@ Once the environment and the path to the dataset are settled, the method is a 3 
 
 * **NOTE: Make sure to use the parameter `exp` in each experiment to give a tag to your experiments. For ex: `exp=teacher`.**
 
-* **Multitask learning**: In order to activate multitask learning, you can use the parameter `target_size` to specify if it's the triplets only or the triplets + the individual IVT components. Triplets only `target_size=100`, triplets+ IVT components `target_size=131`. 
-If you want to add the phase labels as well, you can use `target_size=138`. The phase labels are generated from the Cholec80 dataset, the code to generate the phase annotations will be made available soon.
-
-* **Label smoothing:** To activate label smoothing, add the parameter `smooth=true`
-
-* **Swin large:** Swin base is set by default, in order to train swin large, add the parameter `model_name=swin_large_patch4_window7_224`
-
-* **Ensemble:** The final ensemble code will be provided in the evaluation section.
-
 
 ### Step 1: Train a teacher model
 
 ```
 python main.py target_size=131 epochs=20 distill=false exp=teacher
 ```
-The checkpoints will be saved in the folder `output_dir/output/checkpoints` and the 5-Fold cross validation predictions in `output_dir/output/oofs`.
+The checkpoints will be saved in the folder `output_dir/checkpoints` and the 5-Fold cross validation predictions in `output_dir/oofs`.
 
 ### Step 2: Generate the soft-labels
 Make sure to use use same tags used when training the teacher model mainly `target_size` and `model_name`.
 ```
-python softlabels.py target_size=131 exp=teacher
+python generate.py inference=false target_size=131 exp=teacher
 ```
 The soft-labels will be saved in the folder `parent_path/CholecT45/soflabels`
 ### Step 3: Train the student model
 ```
 python main.py target_size=131 epochs=40 distill=true exp=student
 ```
-The checkpoints will be saved in the folder `output_dir/output/checkpoints` and the 5-Fold cross validation predictions in `output_dir/output/oofs`.
+The checkpoints will be saved in the folder `output_dir/checkpoints` and the 5-Fold cross validation predictions in `output_dir/oofs`.
+
+# 4- Reproduce the paper experiments
+The paper experiments reproduction guide:
+
+### SwinT: 
+SwinT is a baseline Swin base transformer trained with only 100 triplets. To train using 100 triplets, set `target_size=100`.
+```
+python main.py target_size=100 epochs=20 distill=false exp=SwinT
+```
+### SwinT+Multi: 
+SwinT+Multi is a Swin base transformer baseline trained in a multitask learning fashion using additional instrument, verb, and target annotations. To use the additional annotations, set `target_size=131`.
+```
+python main.py target_size=131 epochs=20 distill=false exp=SwinT+MultiT
+```
+### SwinT+SelfD: 
+SwinT+SelfD is a Swin base transformer trained with self-distillation using soft-labels. Generate soft-labels first using:
+```
+python generate.py inference=false target_size=100 exp=SwinT
+```
+Then train the model using `distill=true`
+
+```
+python main.py target_size=100 epochs=40 distill=true exp=SwinT+SelfD
+```
+### SwinT+MultiT+SelfD: 
+SwinT+MultiT+SelfD is a Swin base transformer trained using multitask learning and self-distillation. Generate soft-labels for the SwinT+MultiT model:
+```
+python generate.py inference=false target_size=131 exp=SwinT+MultiT
+```
+Then, train the student model using `distill=true`
+```
+python main.py target_size=131 epochs=40 distill=true exp=SwinT+MultiT+SelfD
+```
+### Ensemble:
+Ensemble model information will be made available shortly.
+
+
+# 5- Inference
+To use saved checkpoints for inference, set `inference=true`
+```
+python generate.py inference=true target_size=100 exp=SwinT
+```
+
+Ensure all five folds' checkpoints are available at `output_dir/checkpoints`. The predictions will be saved in `output_dir/predictions` folder.
+
+**Our model checkpoints will be made available shortly for public use**
+
+# 6- Evaluation
+Final predictions are saved either in the `output_dir/oofs` folder after training or the `output_dir/predictions` folder if generated during inference. To evaluate training predictions, set `inference=false`:
 
 
 
-# 4- Evaluation
-**currently under development and will be made available shortly.**
+```
+python evaluate.py inference=false
+```
+To evaluate inference predictions, set `inference=true`
+```
+python evaluate.py inference=true
+```
+All saved experiments in the respective folder will be evaluated.
+
+If testing the ensemble of multiple experiments, set `ensemble=true` add the relative path to those predictions in a list `ensemble_models=[ swin_bas_131_SwinT+MultiT+SelfD.csv, swin_bas_100_SwinT.csv]`

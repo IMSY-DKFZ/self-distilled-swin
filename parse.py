@@ -138,7 +138,7 @@ def parse_metadata(CFG):
 
 
 # Run the code
-@hydra.main(config_name="config_amin")
+@hydra.main(config_name="config")
 def parse(CFG):
     """
     Main function to parse metadata and annotations for CholecT45 dataset.
