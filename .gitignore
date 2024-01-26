@@ -147,3 +147,6 @@ cython_debug/
 
 # Personal config
 config_amin.yaml
+config_cluster.yaml
+evaluation.py
+test.py

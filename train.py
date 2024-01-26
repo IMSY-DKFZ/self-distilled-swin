@@ -4,10 +4,9 @@ import os
 import time
 import torch
 import pandas as pd
-import neptune
+import neptune.new as neptune
 import ivtmetrics
 from sklearn.metrics import average_precision_score
-from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import Adam
@@ -17,10 +16,9 @@ from torch.cuda import amp
 
 from models import TripletModel
 from preprocess import get_folds
-from dataset import *
 from augmentation import *
 from utils import *
-from helper import train_fn, valid_fn
+from helper import *
 from tri_index import *
 
 
@@ -40,10 +38,12 @@ def train_fnt(CFG):
     # Log the hyperparams to neptune
     if CFG.neplog:
 
+        # Initiate logging
         run = neptune.init(
             project=CFG.neptune_project,
             api_token=CFG.neptune_api_token,
         )  # your credential
+
         run["Model"].log(CFG.model_name)
         run["imsize"].log(CFG.height)
         run["LR"].log(CFG.lr)
@@ -60,21 +60,14 @@ def train_fnt(CFG):
     # Start an empty dataframe to store the predictions
     oof_df = pd.DataFrame()
 
-    # Output directory to store the output: weights, predictions...
-    output_dir = os.path.join(CFG.parent_path, "output/")
-
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-        os.makedirs(os.path.join(output_dir, "checkpoints"))
-        os.makedirs(os.path.join(output_dir, "oofs"))
+    # Create folders to save the checkpoints and predictions
+    os.makedirs(os.path.join(CFG.output_dir, "checkpoints"), exist_ok=True)
+    os.makedirs(os.path.join(CFG.output_dir, "oofs"), exist_ok=True)
 
     # Get the preprocessed train dataframe
     folds, vids = get_folds(CFG.n_fold, CFG)
 
-    # Print training info
-    print(
-        f"Model: {CFG.model_name}; Multitask: {CFG.multi}; Self-distillation: {CFG.distill}; N° images used is:{len(folds)}; \nExperiment: {CFG.exp}"
-    )
+    print_training_info(folds, CFG)
 
     # List to store mAP results
     mAP_folds = []
@@ -84,105 +77,21 @@ def train_fnt(CFG):
 
         # Skip some folds
         if fold in CFG.trn_fold:
-            print(f"Training fold {fold}")
 
-            ##Load model and send it to the GPU
-            model = TripletModel(CFG, CFG.model_name, pretrained=True).to(CFG.device)
+            print("\033[92m" + f"{'-' * 8} Fold {fold + 1} / {CFG.n_fold}" + "\033[0m")
 
-            ##Get train and valid indexes
-            trn_idx = folds[folds["fold"] != fold].index
-            val_idx = folds[folds["fold"] == fold].index
+            # Load model and send it to the GPU
+            model = TripletModel(CFG, CFG.model_name, pretrained=False).to(CFG.device)
 
-            # Get train dataset
-            train_folds = folds.loc[trn_idx].reset_index(drop=True)
+            # Get train and valid Dataframes
+            train_folds, valid_folds, valid_folds_temp = get_dataframes(folds, fold)
 
-            # Get valid dataset
-            valid_folds = folds.loc[val_idx].reset_index(drop=True)
-            valid_folds2 = folds.loc[val_idx].reset_index(drop=True)
-
-            # Apply self-distillation to the student model only
+            # Apply self-distillation to the train dataset
             if CFG.distill:
+                train_folds = apply_self_distillation(fold, train_folds, CFG)
 
-                # Read softlabels
-                train_softs = pd.read_csv(
-                    os.path.join(
-                        CFG.parent_path,
-                        f"softlabels/sl_f{fold}_{CFG.model_name[:8]}_{CFG.target_size}.csv",
-                    )
-                )
-
-                # Get the index of triplet 0 and softlabel 0
-                tri0_idx = int(folds.columns.get_loc("tri0"))
-                sl_pred0_idx = int(train_softs.columns.get_loc("0"))
-
-                # In case of independent test set
-                if CFG.test_inference:
-                    clips = ["VID68", "VID70", "VID73", "VID74", "VID75"]
-                    soft_labels = soft_labels[
-                        ~soft_labels.video.isin(clips)
-                    ].reset_index(drop=True)
-
-                ## Reorder train soft labels to match the train labels order
-                train_softs = train_softs.merge(
-                    train_folds[
-                        [
-                            "id2",
-                        ]
-                    ],
-                    on="id2",
-                    how="right",
-                )
-
-                # Apply self distillation: Default SD= 1
-                train_folds.iloc[:, tri0_idx : tri0_idx + CFG.target_size] = (
-                    train_folds.iloc[:, tri0_idx : tri0_idx + CFG.target_size].values
-                    * (1 - CFG.SD)
-                    + train_softs.iloc[
-                        :, sl_pred0_idx : sl_pred0_idx + CFG.target_size
-                    ].values
-                    * CFG.SD
-                )
-
-                print(f"Soft labels loaded successfully!")
-
-                # Apply label smoothing
-                if CFG.smooth:
-                    train_folds.iloc[:, tri0_idx : tri0_idx + CFG.sd_size] = (
-                        train_folds.iloc[:, tri0_idx : tri0_idx + CFG.sd_size]
-                        * (1.0 - CFG.ls)
-                        + 0.5 * CFG.ls
-                    )
-
-            # Pytorch datasets
-            # Apply train augmentations
-            train_dataset = TrainDataset(
-                train_folds, CFG, transform=get_transforms(data="train", CFG=CFG)
-            )
-
-            # Apply validation augmentations
-            valid_dataset = TrainDataset(
-                valid_folds, CFG, transform=get_transforms(data="valid", CFG=CFG)
-            )
-
-            # Pytorch train dataloader
-            train_loader = DataLoader(
-                train_dataset,
-                batch_size=CFG.batch_size,
-                shuffle=True,
-                num_workers=CFG.nworkers,
-                pin_memory=True,
-                drop_last=True,
-            )
-
-            # Pytorch valid dataloader
-            valid_loader = DataLoader(
-                valid_dataset,
-                batch_size=CFG.batch_size,
-                shuffle=False,
-                num_workers=CFG.nworkers,
-                pin_memory=False,
-                drop_last=False,
-            )
+            # Get dataloders
+            train_loader, valid_loader = get_dataloaders(train_folds, valid_folds, CFG)
 
             # Optimizer, scheduler and criterion
             optimizer = Adam(
@@ -195,16 +104,14 @@ def train_fnt(CFG):
             # Cosine annealing scheduler
             scheduler = CosineAnnealingWarmRestarts(
                 optimizer,
-                T_0=CFG.epochs + 1,
+                T_0=CFG.T_0,
                 T_mult=1,
                 eta_min=CFG.min_lr,
                 last_epoch=-1,
             )
 
             # Binary cross entropy loss function
-            criterion = nn.BCEWithLogitsLoss(reduction="sum").to(
-                CFG.device
-            )  # reduction='sum'
+            criterion = nn.BCEWithLogitsLoss(reduction="sum").to(CFG.device)
 
             # Set the variables to calculate and save the stats
             best_score = 0.0
@@ -215,9 +122,6 @@ def train_fnt(CFG):
             # Score metrics for the fold
             tri0_idx = int(valid_folds.columns.get_loc("tri0"))
 
-            ##Initiate the ivt metric
-            recognize = ivtmetrics.Recognition(num_class=100)
-
             # Start training: Loop over epochs
             print(header)
             for epoch in range(CFG.epochs):
@@ -225,10 +129,7 @@ def train_fnt(CFG):
                 # Start epoch timer
                 epoch_start = time.time()
 
-                # Reset the metric at the beginning of every epoch
-                recognize.reset()
-
-                ##TRAINING LOOP
+                # TRAINING LOOP
                 avg_loss = train_fn(
                     train_loader,
                     model,
@@ -258,7 +159,18 @@ def train_fnt(CFG):
                     preds[:, :100],
                     average=None,
                 )
+
+                # In case of newer sklearn versions
+                classwise[classwise == 0] = np.nan
+
+                # Mean of all the available triplets
                 mAP = np.nanmean(classwise)
+
+                # Store the predictions in a temp df
+                valid_folds_temp[[str(c) for c in range(CFG.target_size)]] = preds
+
+                # ivtmetrics mAP score [Per video aggregation]
+                cholect45_epoch_CV = per_epoch_ivtmetrics(valid_folds_temp, CFG)
 
                 # Log the epoch results to neptune
                 if CFG.neplog:
@@ -275,13 +187,14 @@ def train_fnt(CFG):
                         avg_loss,
                         avg_val_loss,
                         mAP,
+                        cholect45_epoch_CV,
                         (time.time() - epoch_start) / 60 ** 1,
                     )
                 )
 
                 # Save checkpoints
                 save_checkpoint_path = os.path.join(
-                    output_dir,
+                    CFG.output_dir,
                     f"checkpoints/fold{fold}_{CFG.model_name[:8]}_{CFG.target_size}_{CFG.exp}.pth",
                 )
 
@@ -303,17 +216,6 @@ def train_fnt(CFG):
             tri0_idx = int(valid_folds.columns.get_loc("tri0"))
             pred0_idx = int(valid_folds.columns.get_loc("0"))
 
-            # Compute fold's overall mAP score
-            recognize.reset_global()
-            recognize.update(
-                valid_folds.iloc[:, tri0_idx : tri0_idx + 100].values,
-                valid_folds.iloc[:, pred0_idx : pred0_idx + 100].values,
-            )
-
-            # Final results
-            results_ivt = recognize.compute_AP("ivt")
-            fold_mAP = results_ivt["mAP"]
-
             # Compute the metric using sklearn
             classwise = average_precision_score(
                 valid_folds.iloc[:, tri0_idx : tri0_idx + 100].values,
@@ -321,56 +223,59 @@ def train_fnt(CFG):
                 average=None,
             )
 
-            # The mean Map of all the classes
-            mean = np.nanmean(classwise)
+            # The mean mAP of all the (available) classes
+            fold_mAP = np.nanmean(classwise)
+
+            # CholecT45 official metric
+            cholect45_fold_CV = per_epoch_ivtmetrics(valid_folds, CFG)
 
             # Store the per fold mAP scores
-            mAP_folds.append(fold_mAP)
+            mAP_folds.append(cholect45_fold_CV)
 
-            # Print the fold's CV score
-            print("---------------")
-            print(f"Fold{fold}: \n mAP: {round(fold_mAP, 4)} \n mean: {round(mean, 4)}")
-            print("---------------")
+            # Print fold metrics
+            fold_header = f"{'=' * 20} Fold {fold} {'=' * 20}"
+            fold_footer = "=" * len(fold_header)
+
+            print(fold_header)
+            print(f"  mAP: {fold_mAP:.4f}")
+            print(f"  Mean CV Score: {cholect45_fold_CV:.4f}")
+            print(fold_footer)
 
             if CFG.neplog:
-                run[f"CV Folds"].log(mean)
+                run[f"CV Folds"].log(fold_mAP)
 
-            # Save OOFs + Metrics
+            # Save predictions
             oof_df = pd.concat([oof_df, valid_folds])
 
             # Free the GPU memory
-            del model, train_dataset, valid_dataset, train_loader, valid_loader
+            del model, train_loader, valid_loader, train_folds, valid_folds
             torch.cuda.empty_cache()
             gc.collect()
 
-    # Calculate the final metric score over all the folds
-    recognize.reset_global()
-    recognize.update(
-        oof_df.iloc[:, tri0_idx : tri0_idx + 100].values,
-        oof_df.iloc[:, pred0_idx : pred0_idx + 100].values,
-    )
-    results_ivt = recognize.compute_AP("ivt")
-    CV_mAP = results_ivt["mAP"]
-
+    # Calculate overall mAP metric (No aggregation)
     classwise = average_precision_score(
         oof_df.iloc[:, tri0_idx : tri0_idx + 100].values,
         oof_df.iloc[:, pred0_idx : pred0_idx + 100].values,
         average=None,
     )
-    mean = np.nanmean(classwise)
+    overall_mAP = np.nanmean(classwise)
 
-    mAP_folds_mean = np.array(mAP_folds).mean()
+    # Get the final cross-validation score based on ivtmetrics
+    cholect45_final_CV = cholect45_ivtmetrics_mAP(oof_df, CFG)
 
+    # Print final metrics
     print(
-        f"CV: OVERALL:  \nmAP:{round(CV_mAP, 4)} \n mean:{round(mean, 4)} \n folds_mean:{round(mAP_folds_mean, 4)}"
+        f"CV: OVERALL SCORES\n"
+        f"  Overall mAP: {overall_mAP:.4f}\n"
+        f"  CholecT45 mAP: {cholect45_final_CV:.4f}"
     )
 
     if CFG.neplog:
-        run["CV"].log(CV_mAP)
-        run["CV_mean"].log(mAP_folds_mean)
+        run["CV"].log(overall_mAP)
+        run["CholecT45_mAP"].log(cholect45_final_CV)
 
-    # Save oofs/metrics
-    save_path = f"{output_dir}/oofs/O_{CFG.model_name[:8]}_{CFG.exp}.csv"
+    # Save predictions
+    save_path = f"{CFG.output_dir}/oofs/O_{CFG.model_name[:8]}_{CFG.exp}.csv"
 
     if not CFG.debug:
         oof_df.to_csv(save_path)

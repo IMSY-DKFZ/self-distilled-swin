@@ -4,10 +4,47 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 from tri_index import index_by_occurrence
-from torchvision import transforms
+
+
+# Fix number of threads used by opencv
+cv2.setNumThreads(1)
+
+import os
+import cv2
+import torch
+import numpy as np
+from torch.utils.data import Dataset
 
 
 class TrainDataset(Dataset):
+    """
+    Custom PyTorch dataset for training.
+
+    Parameters:
+    - df (pd.DataFrame): DataFrame containing dataset information.
+    - CFG (object): Configuration object containing hyperparameters.
+    - transform (callable, optional): Optional data transformations. Default is None.
+    - inference (bool, optional): Flag indicating inference mode. Default is False.
+
+    Attributes:
+    - df (pd.DataFrame): DataFrame containing dataset information.
+    - CFG (object): Configuration object containing hyperparameters.
+    - file_names (numpy.ndarray): Array containing file names.
+    - transform (callable, optional): Optional data transformations.
+    - inference (bool, optional): Flag indicating inference mode.
+    - labels (torch.FloatTensor): Tensor containing target labels.
+
+    Methods:
+    - __len__(): Returns the length of the dataset.
+    - __getitem__(index): Retrieves an item from the dataset.
+
+    Example:
+    ```python
+    dataset = TrainDataset(df, CFG, transform=get_transforms(), inference=False)
+    ```
+
+    """
+
     def __init__(self, df, CFG, transform=None, inference=False):
         self.df = df
         self.CFG = CFG
@@ -25,15 +62,23 @@ class TrainDataset(Dataset):
         return len(self.df)
 
     def __getitem__(self, index):
+        """
+        Retrieves an item from the dataset.
 
+        Parameters:
+        - index (int): Index of the item to retrieve.
+
+        Returns:
+        - torch.Tensor or tuple: Image and target label if not in inference mode,
+          otherwise only the image.
+
+        """
         # Localize the image and targets
         file_name = self.file_names[index]
         target = self.labels[index]
 
         # Read the image
-        file_path = (
-            f"{os.path.join(self.CFG.parent_path,self.CFG.train_path)}/{file_name}"
-        )
+        file_path = os.path.join(self.CFG.parent_path, self.CFG.train_path, file_name)
         image = cv2.imread(file_path)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 

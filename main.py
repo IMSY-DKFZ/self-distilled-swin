@@ -5,7 +5,7 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-@hydra.main(config_name="config")
+@hydra.main(config_name="config_amin")
 def train(CFG):
     train_fnt(CFG)
 

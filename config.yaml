@@ -1,9 +1,9 @@
 
     # Paths to read and save data
-    parent_path:
+    parent_path: 
     path_csv: dataframes/CholecT45.csv
     train_path: data/
-    output_dir:
+    output_dir: 
     
     
     # General Settings 
@@ -13,7 +13,7 @@
 
     # Hyperparameter
     exp: myexp
-    nworkers: 4
+    nworkers: 12
 
     # Data split
     challenge_split: true
@@ -24,6 +24,9 @@
     - 2
     - 3
     - 4
+
+    step_dom : 1
+    step_min : 1
     
     # Target column param 
     col0: tri0
@@ -36,6 +39,8 @@
     # Model hyperparams
     model_name: swin_base_patch4_window7_224   
     pretrained: true
+    weight_dir : 
+
     
     
     # Augmentation params
@@ -72,7 +77,15 @@
     # Leave out an independent test set of 5 videos
     test_inference: false
 
+    # Inference
+    inference : true
+    ensemble : False
+    ensemble_models :
+
     # Neptune logging
     neplog: false
     neptune_project: 
     neptune_api_token:
+
+    gradient_accumulation_steps: 2
+    max_grad_norm: 1000

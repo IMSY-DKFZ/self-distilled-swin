@@ -6,11 +6,11 @@ neptune-client==0.14.2
 neptune-notebooks==0.9.0
 numpy==1.19.5
 omegaconf==2.1.2
-opencv-python
-pandas==1.4.4
+opencv-python==4.6.0.66
+pandas #==2.1.0
 scikit-learn==0.24.2
 scipy==1.7.1
 seaborn==0.11.2
 timm==0.6.5
-torch==2.0.1
-torchvision==0.15.2
+torch==1.6.0
+torchvision==0.7.0

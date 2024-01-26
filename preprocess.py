@@ -5,26 +5,20 @@ from sklearn.model_selection import GroupKFold
 
 def get_folds(n_fold, CFG):
 
+    print("\033[94mPreparing the data\033[0m")
+
     # Read the dataframe
     train = pd.read_csv(os.path.join(CFG.parent_path, CFG.path_csv))
+
+    print(f"Preprocessing the data...")
 
     # Get the list of videos
     vids = list(train.video.unique())
 
-    # Optional: Keep an independent test set
-    if CFG.test_inference:
-        clips = ["VID68", "VID70", "VID73", "VID74", "VID75"]
-        train = train[~train.video.isin(clips)].reset_index(drop=True)
-
-
-    # DEBUG: Reduce dataset size for faster iteration
-    if CFG.debug:
-        train = train.iloc[::41].reset_index(drop=True)
-
     # Start a folds df to map the folds
     folds = train.copy()
 
-    # Official cross validation split of the CHolecT45 dataset
+    # Official cross validation split of the CholecT45 dataset
     if CFG.challenge_split:
 
         fold1 = [
@@ -116,5 +110,7 @@ def get_folds(n_fold, CFG):
     # Print the folds distribution
     if CFG.debug:
         print(folds.groupby(["fold", "folder"])["multi_tri"].count())
+
+    print("Dataset ready!\n")
 
     return folds, vids
