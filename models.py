@@ -37,7 +37,8 @@ class TripletModel(nn.Module):
         # Load the backbone
         self.model = timm.create_model(model_name, pretrained=pretrained)
 
-        self.model.load_state_dict(
+        if CFG.local_weight:
+            self.model.load_state_dict(
             torch.load(f"{CFG.weight_dir}/swin_base_patch4_window7_224_22kto1k.pth")[
                 "model"
             ]
