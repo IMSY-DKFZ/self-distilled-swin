@@ -47,12 +47,14 @@ def inference(CFG):
     # Initialize an empty dataframe for predictions
     pred_df = pd.DataFrame()
 
+    if CFG.inference:
+        print("\033[94mStarting inference\033[0m")
+    else:
+        print("\033[94mGenerating soft-labels\033[0m")
+
     # Process each fold
     for fold in range(CFG.n_fold):
-        if CFG.inference:
-            print(f"Inference: fold {fold}: Model {CFG.model_name}")
-        else:
-            print(f"Generating soft labels: fold {fold}")
+
 
         # Load model
         model = TripletModel(CFG, model_name=CFG.model_name, pretrained=False).to(
@@ -65,7 +67,11 @@ def inference(CFG):
             f"checkpoints/fold{fold}_{CFG.model_name[:8]}_{CFG.target_size}_{CFG.exp}.pth",
         )
         model.load_state_dict(torch.load(weights_path)["model"])
-        print("Weights loaded successfully!")
+
+        if CFG.inference:
+            print(f"fold {fold}: Weights loaded successfully")
+        else:
+            print(f"fold {fold}: Weights loaded successfully")
 
         # Get train and valid indexes
         trn_idx = folds[folds["fold"] != fold].index
@@ -113,7 +119,8 @@ def inference(CFG):
                 f"softlabels/sl_f{fold}_{CFG.model_name[:8]}_{CFG.target_size}.csv",
             )
             inference_folds.to_csv(save_path)
-
+    
+    print("\033[94mSaving...\033[0m")
     if CFG.inference:
         preds_save_path = os.path.join(
             CFG.output_dir,
@@ -126,7 +133,7 @@ def inference(CFG):
 
 
 # Run the code
-@hydra.main(config_name="config")
+@hydra.main(config_name="config_amin")
 def generate(CFG):
     """
     Main function to run the inference.

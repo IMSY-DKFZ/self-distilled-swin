@@ -194,7 +194,7 @@ def inference_fn(
         with torch.no_grad():
             y_preds = model(images)
 
-        preds.append(y_preds.to("cpu").numpy())
+        preds.append(y_preds.sigmoid().to("cpu").numpy())
 
     # Concatenate predictions
     predictions = np.concatenate(preds)

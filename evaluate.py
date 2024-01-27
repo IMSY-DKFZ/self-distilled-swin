@@ -2,7 +2,7 @@ import pandas as pd
 import os
 import hydra
 import warnings
-from utils import CholecT45_ivtmetrics_mAP
+from utils import cholect45_ivtmetrics_mAP
 
 warnings.filterwarnings('ignore')
 
@@ -38,7 +38,7 @@ def evaluate(CFG):
         experiment = pred_df.split(".")[0].split('_')[-1]
 
         # Get the mAP score
-        score = CholecT45_ivtmetrics_mAP(df, CFG)
+        score = cholect45_ivtmetrics_mAP(df, CFG)
         print(f"{experiment}: {round(score * 100, 2)}")
 
     # Compute the ensemble of multiple experiments available in CFG.ensemble_models
@@ -58,7 +58,7 @@ def evaluate(CFG):
             df.iloc[:, pred0_idx:pred0_idx + 100] = preds
 
             # Compute the ensemble mAP metric
-            score = CholecT45_ivtmetrics_mAP(df, CFG)
+            score = cholect45_ivtmetrics_mAP(df, CFG)
 
             # Get experiment tags for ensemble models
             ensemble_experiments = [model.split(".")[0].split('_')[-1] for model in CFG.ensemble_models]
@@ -70,7 +70,7 @@ def evaluate(CFG):
 
 
 # Run the code
-@hydra.main(config_name="config")
+@hydra.main(config_name="config_amin")
 def run(CFG):
     """
     Main function to run the evaluation.

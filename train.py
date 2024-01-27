@@ -56,6 +56,7 @@ def train_fnt(CFG):
         run["split"].log(CFG.challenge_split)
         run["tsize"].log(CFG.target_size)
         run["smooth"].log(CFG.smooth)
+        run["exp"].log(CFG.exp)
 
     # Start an empty dataframe to store the predictions
     oof_df = pd.DataFrame()
@@ -81,7 +82,7 @@ def train_fnt(CFG):
             print("\033[92m" + f"{'-' * 8} Fold {fold + 1} / {CFG.n_fold}" + "\033[0m")
 
             # Load model and send it to the GPU
-            model = TripletModel(CFG, CFG.model_name, pretrained=False).to(CFG.device)
+            model = TripletModel(CFG, CFG.model_name, pretrained=CFG.pretrained).to(CFG.device)
 
             # Get train and valid Dataframes
             train_folds, valid_folds, valid_folds_temp = get_dataframes(folds, fold)
@@ -177,7 +178,7 @@ def train_fnt(CFG):
                     run[f"tloss{fold}"].log(avg_loss)
                     run[f"val_loss{fold}"].log(avg_val_loss)
                     run[f"mAP_0_{fold}"].log(mAP)
-                    run[f"imAP_0_{fold}"].log(0)
+                    run[f"cmAP{fold}"].log(cholect45_epoch_CV)
                     run[f"cLR_{fold}"].log(cur_lr)
 
                 # Print loss/metric
@@ -238,7 +239,7 @@ def train_fnt(CFG):
 
             print(fold_header)
             print(f"  mAP: {fold_mAP:.4f}")
-            print(f"  Mean CV Score: {cholect45_fold_CV:.4f}")
+            print(f"  CholecT45 mAP: {cholect45_fold_CV:.4f}")
             print(fold_footer)
 
             if CFG.neplog:
