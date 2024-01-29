@@ -81,15 +81,15 @@ def parse_metadata(CFG):
     metadata = pd.DataFrame.from_dict(
         {
             "folder": folders,
-            "nframe": nframes,
+            "frame": nframes,
             "video": videos,
-            "nid": nids,
-            "id2": nfolder,
+            "image_path": nids,
+            "image_id": nfolder,
         }
     )
 
     # Sort based on video and frame ids
-    metadata = metadata.sort_values(by=["video", "nframe"], ascending=(True, True))
+    metadata = metadata.sort_values(by=["video", "frame"], ascending=(True, True))
 
     print("Start parsing the annotations")
 

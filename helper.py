@@ -225,7 +225,7 @@ def apply_self_distillation(fold, train_folds, CFG):
     sl_pred0_idx = train_softs.columns.get_loc("0")
 
     # Reorder train soft labels to match the train labels order
-    train_softs = train_softs.merge(train_folds[["id2"]], on="id2", how="right")
+    train_softs = train_softs.merge(train_folds[["image_id"]], on="image_id", how="right")
 
     # Apply self-distillation: Default SD=1
     tri_range = slice(tri0_idx, tri0_idx + CFG.target_size)

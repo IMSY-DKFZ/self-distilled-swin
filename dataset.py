@@ -48,7 +48,7 @@ class TrainDataset(Dataset):
     def __init__(self, df, CFG, transform=None, inference=False):
         self.df = df
         self.CFG = CFG
-        self.file_names = df["nid"].values
+        self.file_names = df["image_path"].values
         self.transform = transform
         self.inference = inference
         index_no = int(df.columns.get_loc(CFG.col0))

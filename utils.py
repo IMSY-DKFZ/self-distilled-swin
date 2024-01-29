@@ -128,6 +128,11 @@ def per_epoch_ivtmetrics(fold_df, CFG):
 
 
 def print_training_info(folds, CFG):
+    
+    # print GPU model
+    print("\033[94mHardware used\033[0m")
+    print(f"GPU: {torch.cuda.get_device_name(0)}, cpu cores: {os.cpu_count()}\n")
+    
     # Experiment tag
     tag = (
         f"\033[92m{CFG.exp}\033[0m"
@@ -159,8 +164,13 @@ def print_training_info(folds, CFG):
     print("\033[94mHyperparameters\033[0m")
     print(hyperparameters_info)
 
-    # print GPU model
-    print("\033[94mHardware used\033[0m")
-    print(f"GPU: {torch.cuda.get_device_name(0)}, cpu cores: {os.cpu_count()}\n")
+    metrics_info = (
+        f"{'mAP:':<20} Overall mAP per fold (no aggregation)\n"
+        f"{'cmAP:':<20} Challenge official mAP (aggregation per video)\n"
+    )
+
+    print("\033[94mMetrics\033[0m")
+    print(metrics_info)
+
 
     print("\033[94mTraining started\033[0m\n")
