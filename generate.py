@@ -133,7 +133,7 @@ def inference(CFG):
 
 
 # Run the code
-@hydra.main(config_name="config_amin")
+@hydra.main(config_name="config")
 def generate(CFG):
     """
     Main function to run the inference.

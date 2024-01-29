@@ -70,7 +70,7 @@ def evaluate(CFG):
 
 
 # Run the code
-@hydra.main(config_name="config_amin")
+@hydra.main(config_name="config")
 def run(CFG):
     """
     Main function to run the evaluation.
