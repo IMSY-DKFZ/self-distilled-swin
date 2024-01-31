@@ -7,6 +7,16 @@ import ivtmetrics
 
 
 def seed_torch(seed=42):
+    """
+    Seed various random number generators to ensure reproducibility.
+
+    Args:
+        seed (int): Seed value to set for random number generators.
+
+    Returns:
+        None
+    """
+
     random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
     np.random.seed(seed)
@@ -18,10 +28,10 @@ def seed_torch(seed=42):
 ### Table for printing results
 
 header = f"""
- Epoch | {"Loss":^7} | {"Val Loss":^8} | {"mAP":^8} | {"CmAP":^8} | {"Time, m":^7}
+ Epoch | {"Loss":^6} | {"Val Loss":^7} | {"mAP":^7} | {"CmAP":^7} | {"Time, m":^6}
 """
 
-raw_line = "{:6d} | {:7.3f} | {:8.3f} | {:8.3f} | {:8.3f} | {:6.2f}"
+raw_line = "{:6d} | {:7.3f} | {:7.3f} | {:7.3f} | {:7.3f} | {:6.2f}"
 
 
 def cholect45_ivtmetrics_mAP(df, CFG):
@@ -40,11 +50,6 @@ def cholect45_ivtmetrics_mAP(df, CFG):
 
     Returns:
     float: Mean mAP value over 5 folds.
-
-    Example:
-    ```python
-    mean_mAP = CholecT45_ivtmetrics_mAP(df, CFG)
-    ```
 
     """
     # Get the indexes of the 1st triplet/prediction columns
@@ -77,6 +82,7 @@ def cholect45_ivtmetrics_mAP(df, CFG):
 
         # Get the final mAP score for the fold
         ivt.append(rec.compute_video_AP("ivt")["mAP"])
+
 
     # Return the mean mAP value over 5 folds
     return np.mean(ivt)
@@ -127,6 +133,9 @@ def per_epoch_ivtmetrics(fold_df, CFG):
     return mAP
 
 
+
+
+
 def print_training_info(folds, CFG):
     
     # print GPU model
@@ -143,6 +152,7 @@ def print_training_info(folds, CFG):
     training_info = (
         f"{'Model:':<20} {CFG.model_name}\n"
         f"{'Multitask:':<20} {False if CFG.target_size==100 else True}\n"
+        f"{'Target size:':<20} {CFG.target_size}\n"
         f"{'Self-distillation:':<20} {CFG.distill}\n"
         f"{'N° images used is:':<20} {len(folds)}\n"
         f"{'Experiment:':<20} {tag}\n"

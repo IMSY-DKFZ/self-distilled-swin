@@ -4,6 +4,8 @@ import os
 import csv
 import hydra
 
+from global_var import config_name
+
 
 def parse_annotations(CFG, component="triplet"):
     """
@@ -39,6 +41,69 @@ def parse_annotations(CFG, component="triplet"):
 
     component_df = pd.DataFrame(labels)
     return component_df
+
+
+    
+
+
+    
+# Function to process each file and return a DataFrame
+def parse_phase_cholec80(CFG):
+    """
+    Process phase annotations from the Cholec80 dataset and return a DataFrame.
+
+    Args:
+        CFG (OmegaConf): Configuration object containing Cholec80 phase path.
+
+    Returns:
+        DataFrame: A DataFrame containing video names, frame numbers, and phase labels.
+    """
+
+    # Updated dictionary for mapping phase names to numerical classes
+    phase_mapping = {
+        'Preparation': 1,
+        'CalotTriangleDissection': 2,
+        'ClippingCutting': 3,
+        'GallbladderDissection': 4,
+        'GallbladderPackaging': 5,
+        'CleaningCoagulation': 6,
+        'GallbladderRetraction': 7
+    }
+
+
+    # Cholec80 phase annotations folder
+    directory = CFG.cholec80_phase_path
+
+    # Start an empty list to store the data
+    data = []
+
+    for filename in os.listdir(directory):
+        if filename.endswith('-phase.txt'):
+            file_path = os.path.join(directory, filename)
+            video_name = os.path.basename(file_path).split('-')[0]
+            video_name = video_name.replace("video", 'VID')
+
+            # Get CholecT45 videos
+            cholect45_videos = os.listdir(os.path.join(CFG.parent_path, CFG.train_path))
+            
+            if video_name in cholect45_videos:
+
+                with open(file_path, 'r') as file:
+                    lines = file.readlines()
+
+                for line in lines[1:]:  # Skip the header line
+                    frame, phase = line.strip().split('\t')
+                    frame_number = int(frame)
+                    if frame_number % 25 == 0:
+                        second = frame_number // 25
+                        phase_number = phase_mapping.get(phase, 0)
+                        data.append([video_name, second, phase_number])
+
+    df = pd.DataFrame(data, columns=['video', 'frame', 'phase'])
+    return df
+
+
+
 
 
 def parse_metadata(CFG):
@@ -111,6 +176,21 @@ def parse_metadata(CFG):
         axis=1,
     )
 
+    # Add the surgical phase annotations from cholec80    
+    if CFG.phase:
+        # Process files and create DataFrame
+        phase_annotations = parse_phase_cholec80(CFG)
+
+        print('Phase annotations generated successfully!')
+
+        # add the phase annotation to the dataframe
+        # VID56 frames 1835 and 1836 are missing in cholec80, we forward fill the NaNs
+        final_df = final_df.merge(phase_annotations[['video', 'frame', 'phase']], on=['video', 'frame'], how='left').fillna(method='ffill')
+        
+        # One hot encode the phases
+        final_df = pd.get_dummies(final_df, columns=['phase'], prefix=['p'])
+    
+    
     # Compute combination of triplets per frame
     all_tar = []
 
@@ -123,6 +203,8 @@ def parse_metadata(CFG):
                 triplets.append(j)
         all_tar.append(triplets)
 
+    
+    
     # Save the triplet combination in a new column
     final_df["multi_tri"] = all_tar
 
@@ -131,6 +213,7 @@ def parse_metadata(CFG):
     if not os.path.exists(dataframes_folder):
         os.mkdir(dataframes_folder)
 
+    
     # Save final csv
     final_df.to_csv(os.path.join(dataframes_folder, "CholecT45.csv"), index=False)
 
@@ -138,7 +221,7 @@ def parse_metadata(CFG):
 
 
 # Run the code
-@hydra.main(config_name="config")
+@hydra.main(config_name=config_name)
 def parse(CFG):
     """
     Main function to parse metadata and annotations for CholecT45 dataset.

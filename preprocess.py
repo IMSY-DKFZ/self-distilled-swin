@@ -1,9 +1,19 @@
-import pandas as pd
 import os
+import pandas as pd
 from sklearn.model_selection import GroupKFold
 
+def get_folds(CFG):
+    """
+    Prepare and split the data into folds for cross-validation.
 
-def get_folds(n_fold, CFG):
+    Args:
+        n_fold (int): Number of folds for cross-validation.
+        CFG (OmegaConf): Configuration object.
+
+    Returns:
+        folds (DataFrame): DataFrame with fold assignments.
+        vids (list): List of unique video IDs.
+    """
 
     print("\033[94mPreparing the data\033[0m")
 
@@ -18,82 +28,40 @@ def get_folds(n_fold, CFG):
     # Start a folds df to map the folds
     folds = train.copy()
 
-    # Official cross validation split of the CholecT45 dataset
+    # Official cross-validation split of the CholecT45 dataset
     if CFG.challenge_split:
 
-        fold1 = [
-            "VID79",
-            "VID02",
-            "VID51",
-            "VID06",
-            "VID25",
-            "VID14",
-            "VID66",
-            "VID23",
-            "VID50",
-        ]
-        fold2 = [
-            "VID80",
-            "VID32",
-            "VID05",
-            "VID15",
-            "VID40",
-            "VID47",
-            "VID26",
-            "VID48",
-            "VID70",
-        ]
-        fold3 = [
-            "VID31",
-            "VID57",
-            "VID36",
-            "VID18",
-            "VID52",
-            "VID68",
-            "VID10",
-            "VID08",
-            "VID73",
-        ]
-        fold4 = [
-            "VID42",
-            "VID29",
-            "VID60",
-            "VID27",
-            "VID65",
-            "VID75",
-            "VID22",
-            "VID49",
-            "VID12",
-        ]
-        fold5 = [
-            "VID78",
-            "VID43",
-            "VID62",
-            "VID35",
-            "VID74",
-            "VID01",
-            "VID56",
-            "VID04",
-            "VID13",
-        ]
+        fold_map = {
+            "fold1": [
+                "VID79", "VID02", "VID51", "VID06", "VID25", "VID14", "VID66", "VID23", "VID50"
+            ],
+            "fold2": [
+                "VID80", "VID32", "VID05", "VID15", "VID40", "VID47", "VID26", "VID48", "VID70"
+            ],
+            "fold3": [
+                "VID31", "VID57", "VID36", "VID18", "VID52", "VID68", "VID10", "VID08", "VID73"
+            ],
+            "fold4": [
+                "VID42", "VID29", "VID60", "VID27", "VID65", "VID75", "VID22", "VID49", "VID12"
+            ],
+            "fold5": [
+                "VID78", "VID43", "VID62", "VID35", "VID74", "VID01", "VID56", "VID04", "VID13"
+            ]
+        }
 
-        # Initiate the fold column
+        # Initialize the 'fold' column with -1
         folds["fold"] = -1
 
         # Map the folds to the videos
-        fold_list = [fold1, fold2, fold3, fold4, fold5]
-        for n, valfold in enumerate(fold_list):
+        for fold, video_list in fold_map.items():
+            folds.loc[folds["video"].isin(video_list), "fold"] = int(fold[-1]) - 1
 
-            # Loop over the dataset to map the videos to their fold number
-            for j, i in enumerate(folds.video.values):
-                if i in valfold:
-                    folds.loc[j, "fold"] = n
-
+        # Convert the 'fold' column to int
         folds["fold"] = folds["fold"].astype(int)
 
-    # Using groupKFold split instead of the official split
+    # Using GroupKFold split instead of the official split
     else:
-        # Use groupKFold to split the videos
+        # Use GroupKFold to split the videos
         Fold = GroupKFold(n_splits=CFG.nfold)
 
         # Get the videos

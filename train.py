@@ -5,7 +5,6 @@ import time
 import torch
 import pandas as pd
 import neptune.new as neptune
-import ivtmetrics
 from sklearn.metrics import average_precision_score
 import torch.nn as nn
 import torch.nn.functional as F
@@ -66,7 +65,7 @@ def train_fnt(CFG):
     os.makedirs(os.path.join(CFG.output_dir, "oofs"), exist_ok=True)
 
     # Get the preprocessed train dataframe
-    folds, vids = get_folds(CFG.n_fold, CFG)
+    folds, vids = get_folds(CFG)
 
     print_training_info(folds, CFG)
 

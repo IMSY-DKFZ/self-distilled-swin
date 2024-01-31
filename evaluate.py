@@ -3,6 +3,8 @@ import os
 import hydra
 import warnings
 from utils import cholect45_ivtmetrics_mAP
+from global_var import config_name
+
 
 warnings.filterwarnings('ignore')
 
@@ -39,7 +41,7 @@ def evaluate(CFG):
 
         # Get the mAP score
         score = cholect45_ivtmetrics_mAP(df, CFG)
-        print(f"{experiment}: {round(score * 100, 2)}")
+        print(f"{experiment}: {round(score * 100, 2)}%")
 
     # Compute the ensemble of multiple experiments available in CFG.ensemble_models
     if CFG.ensemble:
@@ -70,7 +72,7 @@ def evaluate(CFG):
 
 
 # Run the code
-@hydra.main(config_name="config")
+@hydra.main(config_name=config_name)
 def run(CFG):
     """
     Main function to run the evaluation.

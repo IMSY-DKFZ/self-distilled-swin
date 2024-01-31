@@ -5,15 +5,9 @@ import torch
 from torch.utils.data import Dataset
 from tri_index import index_by_occurrence
 
-
 # Fix number of threads used by opencv
 cv2.setNumThreads(1)
 
-import os
-import cv2
-import torch
-import numpy as np
-from torch.utils.data import Dataset
 
 
 class TrainDataset(Dataset):

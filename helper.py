@@ -239,9 +239,8 @@ def apply_self_distillation(fold, train_folds, CFG):
 
     # Apply label smoothing
     if CFG.smooth:
-        sd_range = slice(tri0_idx, tri0_idx + CFG.sd_size)
-        train_folds.iloc[:, sd_range] = (
-            train_folds.iloc[:, sd_range] * (1.0 - CFG.ls) + 0.5 * CFG.ls
+        train_folds.iloc[:, tri_range] = (
+            train_folds.iloc[:, tri_range] * (1.0 - CFG.ls) + 0.5 * CFG.ls
         )
     return train_folds
 
@@ -258,11 +257,6 @@ def get_dataloaders(train_folds, valid_folds, CFG):
     Returns:
     - DataLoader: PyTorch DataLoader for the training dataset.
     - DataLoader: PyTorch DataLoader for the validation dataset.
-
-    Example:
-    ```python
-    train_loader, valid_loader = get_dataloaders(train_folds, valid_folds, CFG)
-    ```
 
     """
     # PyTorch datasets

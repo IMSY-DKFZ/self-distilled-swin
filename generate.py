@@ -10,6 +10,7 @@ from preprocess import get_folds
 from augmentation import get_transforms
 from dataset import TrainDataset
 from helper import inference_fn
+from global_var import config_name
 
 warnings.filterwarnings("ignore")
 
@@ -133,7 +134,7 @@ def inference(CFG):
 
 
 # Run the code
-@hydra.main(config_name="config")
+@hydra.main(config_name=config_name)
 def generate(CFG):
     """
     Main function to run the inference.

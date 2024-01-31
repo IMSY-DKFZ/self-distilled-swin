@@ -34,11 +34,28 @@ parent_path: PATH/CholecT45
 output_dir:  path where to save the outputs
 ```
 
+
+### **Cholec80:** (Phase annotations)
+The surgical phase annotations are parsed from cholec80 dataset, you can download the dataset following the instructions in the [cholec80 dataset's repository](https://github.com/CAMMA-public/TF-Cholec80).
+
+After downloading the dataset, set the path to the phase annotations folder `cholec80_phase_path` in the config.yaml
+
+```
+cholec80_phase_path: local_path/cholec80/phase_annotations
+```
+
 ### **Annotations:** 
-The dataloader expects the annotations in a csv format, in order to generate the annotations csv file, run the following command
+The dataloader expects the annotations in a csv format, in order to generate the annotations csv file, run the following command.
 
 ```
 python parse.py
+```
+
+If you have cholec80 and want to parse the phase annotations as well add phase=true
+
+```
+python parse.py phase=true
+    
 ```
 
 
@@ -55,7 +72,6 @@ Once the CholecT45.csv file is generated, the final CholecT45 folder structure s
   - verb
   - dataframes
     - CholecT45.csv
-
 
 
 
@@ -117,7 +133,13 @@ Then, train the student model using `distill=true`
 python main.py target_size=131 epochs=40 distill=true exp=SwinT+MultiT+SelfD
 ```
 ### Ensemble:
-Ensemble model information will be made available shortly.
+The ensemble comprises three key components:
+
+* **SwinT+MultiT+SelfD Model**: This model represents the primary configuration discussed earlier in the README.
+
+* **SwinT+MultiT+SelfD Model with Phase Annotations:** To replicate this model, follow the same instructions as for the standard **SwinT+MultiT+SelfD** model, but set the `target_size=138` to accommodate the additional seven surgical phases.
+
+* **SwinT+MultiT+SelfD Model with Swin Transformer Large Backbone:** To replicate this variant, use the same steps as outlined for the standard **SwinT+MultiT+SelfD** model, but change the `model_name=swin_large_patch4_window7_224` to utilize the Swin Transformer large backbone. Additionally, this model employs label smoothing, so ensure you set the `smooth=true`.
 
 
 # 5- Inference

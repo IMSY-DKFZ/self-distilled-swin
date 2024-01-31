@@ -3,8 +3,11 @@
     parent_path: 
     path_csv: dataframes/CholecT45.csv
     train_path: data/
-    output_dir: 
-    
+    output_dir:
+
+    # Cholec80 phase annotations path
+    phase : false
+    cholec80_phase_path : # example: local_path/cholec80/phase_annotations
     
     # General Settings 
     debug: false
@@ -67,7 +70,6 @@
     # Label smoothing
     smooth : false
     ls : 0.1
-    msmooth: false
 
     
     # Drop noisy frames
