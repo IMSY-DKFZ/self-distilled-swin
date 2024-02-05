@@ -94,7 +94,6 @@ Results will be saved at `output_dir/official_results`
 
 # 4- Reproduce the paper experiments
 
-## Section 4 - Replicating the Research Experiments
 
 You can use the following parameters to run all the experiments described in the paper: `target_size`, `model_name`, and `exp`.
 
@@ -105,7 +104,7 @@ You can use the following parameters to run all the experiments described in the
 bash runs/run.sh target_size=100 save_epoch=3 exp=SwinT
 
 ```
-### Train SwinT+MulTI and SwinT+Multi+selfD
+### Train SwinT+MulTi and SwinT+Multi+SelfD
 ```bash
 bash runs/run.sh target_size=131 save_epoch=3 exp=SwinT+MultiT
 ```
@@ -115,7 +114,7 @@ bash runs/run.sh target_size=138 save_epoch=3 exp=MultiT+phase
 ```
 ### Train SwinLarge
 ```bash
-bash runs/run.sh `model_name=swin_large_patch4_window7_224` target_size=131 save_epoch=3 exp=SwinLarge
+bash runs/run.sh model_name=swin_large_patch4_window7_224 target_size=131 save_epoch=3 exp=SwinLarge
 ```
 
 
@@ -144,10 +143,10 @@ All saved experiments in the respective folder will be evaluated.
 
 If testing the ensemble of multiple experiments, set `ensemble=true` add the relative path to those predictions in a list `ensemble_models=[prediction1.csv,prediction2.csv,...]`
 
-# Citation
 
 # Cite via BibTex:
 
+```
 @inproceedings{yamlahi2023self,
 title={Self-distillation for surgical action recognition},
 author={Yamlahi, Amine and Tran, Thuy Nuong and Godau, Patrick and Schellenberg, Melanie and Michael, Dominik and Smidt, Finn-Henri and N{"o}lke, Jan-Hinrich and Adler, Tim J and Tizabi, Minu Dietlinde and Nwoye, Chinedu Innocent and others},
@@ -156,3 +155,4 @@ pages={637--646},
 year={2023},
 organization={Springer}
 }
+```
