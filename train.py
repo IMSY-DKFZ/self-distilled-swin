@@ -4,12 +4,8 @@ import os
 import time
 import torch
 import pandas as pd
-import neptune.new as neptune
 from sklearn.metrics import average_precision_score
-import torch.nn as nn
 import torch.nn.functional as F
-from torch.optim import Adam
-from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from torch.cuda import amp
 
 
@@ -34,28 +30,9 @@ def train_fnt(CFG):
         CFG.epochs = 1
         CFG.neplog = False
 
-    # Log the hyperparams to neptune
+    # Logging training stats
     if CFG.neplog:
-
-        # Initiate logging
-        run = neptune.init(
-            project=CFG.neptune_project,
-            api_token=CFG.neptune_api_token,
-        )  # your credential
-
-        run["Model"].log(CFG.model_name)
-        run["imsize"].log(CFG.height)
-        run["LR"].log(CFG.lr)
-        run["bs"].log(CFG.batch_size)
-        run["Epochs"].log(CFG.epochs)
-        run["SD"].log(CFG.SD)
-        run["T_0"].log(CFG.T_0)
-        run["min_lr"].log(CFG.min_lr)
-        run["seed"].log(str(CFG.seed))
-        run["split"].log(CFG.challenge_split)
-        run["tsize"].log(CFG.target_size)
-        run["smooth"].log(CFG.smooth)
-        run["exp"].log(CFG.exp)
+        run = logging_to_neptune(CFG)
 
     # Start an empty dataframe to store the predictions
     oof_df = pd.DataFrame()
@@ -69,9 +46,6 @@ def train_fnt(CFG):
 
     print_training_info(folds, CFG)
 
-    # List to store mAP results
-    mAP_folds = []
-
     # Loop over the folds
     for fold in range(CFG.n_fold):
 
@@ -81,7 +55,9 @@ def train_fnt(CFG):
             print("\033[92m" + f"{'-' * 8} Fold {fold + 1} / {CFG.n_fold}" + "\033[0m")
 
             # Load model and send it to the GPU
-            model = TripletModel(CFG, CFG.model_name, pretrained=CFG.pretrained).to(CFG.device)
+            model = TripletModel(CFG, CFG.model_name, pretrained=CFG.pretrained).to(
+                CFG.device
+            )
 
             # Get train and valid Dataframes
             train_folds, valid_folds, valid_folds_temp = get_dataframes(folds, fold)
@@ -93,34 +69,14 @@ def train_fnt(CFG):
             # Get dataloders
             train_loader, valid_loader = get_dataloaders(train_folds, valid_folds, CFG)
 
-            # Optimizer, scheduler and criterion
-            optimizer = Adam(
-                model.parameters(),
-                lr=CFG.lr,
-                weight_decay=CFG.weight_decay,
-                amsgrad=False,
-            )
-
-            # Cosine annealing scheduler
-            scheduler = CosineAnnealingWarmRestarts(
-                optimizer,
-                T_0=CFG.T_0,
-                T_mult=1,
-                eta_min=CFG.min_lr,
-                last_epoch=-1,
-            )
-
-            # Binary cross entropy loss function
-            criterion = nn.BCEWithLogitsLoss(reduction="sum").to(CFG.device)
+            # Get optimize, scheduler and loss function
+            optimizer, scheduler, criterion = compile_model(CFG, model)
 
             # Set the variables to calculate and save the stats
             best_score = 0.0
 
             # Mixed precision scaler
             scaler = amp.GradScaler()
-
-            # Score metrics for the fold
-            tri0_idx = int(valid_folds.columns.get_loc("tri0"))
 
             # Start training: Loop over epochs
             print(header)
@@ -153,21 +109,11 @@ def train_fnt(CFG):
                 # Get the updated lr after the update
                 cur_lr = scheduler.get_last_lr()
 
-                # original mAP from sklearn
-                classwise = average_precision_score(
-                    valid_folds.iloc[:, tri0_idx : tri0_idx + 100].values,
-                    preds[:, :100],
-                    average=None,
-                )
-
-                # In case of newer sklearn versions
-                classwise[classwise == 0] = np.nan
-
-                # Mean of all the available triplets
-                mAP = np.nanmean(classwise)
-
                 # Store the predictions in a temp df
                 valid_folds_temp[[str(c) for c in range(CFG.target_size)]] = preds
+
+                # Compute overall mAP score (no aggregation)
+                mAP = compute_mAP_score(valid_folds_temp)
 
                 # ivtmetrics mAP score [Per video aggregation]
                 cholect45_epoch_CV = per_epoch_ivtmetrics(valid_folds_temp, CFG)
@@ -198,13 +144,21 @@ def train_fnt(CFG):
                     f"checkpoints/fold{fold}_{CFG.model_name[:8]}_{CFG.target_size}_{CFG.exp}.pth",
                 )
 
-                # Save only best model (best mAP score)
-                if mAP > best_score:
-                    best_score = mAP
+                # Save last epoch
+                if CFG.early_stopping:
                     torch.save(
                         {"model": model.state_dict(), "preds": preds},
                         save_checkpoint_path,
                     )
+
+                else:
+                    # Save only best model (best mAP score)
+                    if mAP > best_score:
+                        best_score = mAP
+                        torch.save(
+                            {"model": model.state_dict(), "preds": preds},
+                            save_checkpoint_path,
+                        )
 
             # Load the best checkpoint to calculate the fold's final score
             check_point = torch.load(save_checkpoint_path)
@@ -212,25 +166,11 @@ def train_fnt(CFG):
             # Save the best predictions to dataframe
             valid_folds[[str(c) for c in range(CFG.target_size)]] = check_point["preds"]
 
-            # Score metrics for the fold
-            tri0_idx = int(valid_folds.columns.get_loc("tri0"))
-            pred0_idx = int(valid_folds.columns.get_loc("0"))
-
-            # Compute the metric using sklearn
-            classwise = average_precision_score(
-                valid_folds.iloc[:, tri0_idx : tri0_idx + 100].values,
-                valid_folds.iloc[:, pred0_idx : pred0_idx + 100].values,
-                average=None,
-            )
-
-            # The mean mAP of all the (available) classes
-            fold_mAP = np.nanmean(classwise)
+            # Compute overall mAP score (no aggregation)
+            fold_mAP = compute_mAP_score(valid_folds)
 
             # CholecT45 official metric
             cholect45_fold_CV = per_epoch_ivtmetrics(valid_folds, CFG)
-
-            # Store the per fold mAP scores
-            mAP_folds.append(cholect45_fold_CV)
 
             # Print fold metrics
             fold_header = f"{'=' * 20} Fold {fold} {'=' * 20}"
@@ -252,13 +192,8 @@ def train_fnt(CFG):
             torch.cuda.empty_cache()
             gc.collect()
 
-    # Calculate overall mAP metric (No aggregation)
-    classwise = average_precision_score(
-        oof_df.iloc[:, tri0_idx : tri0_idx + 100].values,
-        oof_df.iloc[:, pred0_idx : pred0_idx + 100].values,
-        average=None,
-    )
-    overall_mAP = np.nanmean(classwise)
+    # Overall mAP (no aggregation)
+    overall_mAP = compute_mAP_score(oof_df)
 
     # Get the final cross-validation score based on ivtmetrics
     cholect45_final_CV = cholect45_ivtmetrics_mAP(oof_df, CFG)

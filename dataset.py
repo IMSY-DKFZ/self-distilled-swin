@@ -9,7 +9,6 @@ from tri_index import index_by_occurrence
 cv2.setNumThreads(1)
 
 
-
 class TrainDataset(Dataset):
     """
     Custom PyTorch dataset for training.

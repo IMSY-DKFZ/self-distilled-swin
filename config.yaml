@@ -44,6 +44,8 @@
     pretrained: true
     weight_dir : 
     local_weight : false
+    pretrained_model: false
+
 
     
     
@@ -61,6 +63,8 @@
     valid_batch_size: 64
     weight_decay: 1e-6
     seed: 142
+    early_stopping : false
+
 
 
     # Self-distillation
@@ -81,6 +85,7 @@
     test_inference: false
 
     # Inference
+    save_folder :
     inference : true
     ensemble : False
     ensemble_models :

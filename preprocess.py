@@ -2,6 +2,7 @@ import os
 import pandas as pd
 from sklearn.model_selection import GroupKFold
 
+
 def get_folds(CFG):
     """
     Prepare and split the data into folds for cross-validation.
@@ -33,20 +34,60 @@ def get_folds(CFG):
 
         fold_map = {
             "fold1": [
-                "VID79", "VID02", "VID51", "VID06", "VID25", "VID14", "VID66", "VID23", "VID50"
+                "VID79",
+                "VID02",
+                "VID51",
+                "VID06",
+                "VID25",
+                "VID14",
+                "VID66",
+                "VID23",
+                "VID50",
             ],
             "fold2": [
-                "VID80", "VID32", "VID05", "VID15", "VID40", "VID47", "VID26", "VID48", "VID70"
+                "VID80",
+                "VID32",
+                "VID05",
+                "VID15",
+                "VID40",
+                "VID47",
+                "VID26",
+                "VID48",
+                "VID70",
             ],
             "fold3": [
-                "VID31", "VID57", "VID36", "VID18", "VID52", "VID68", "VID10", "VID08", "VID73"
+                "VID31",
+                "VID57",
+                "VID36",
+                "VID18",
+                "VID52",
+                "VID68",
+                "VID10",
+                "VID08",
+                "VID73",
             ],
             "fold4": [
-                "VID42", "VID29", "VID60", "VID27", "VID65", "VID75", "VID22", "VID49", "VID12"
+                "VID42",
+                "VID29",
+                "VID60",
+                "VID27",
+                "VID65",
+                "VID75",
+                "VID22",
+                "VID49",
+                "VID12",
             ],
             "fold5": [
-                "VID78", "VID43", "VID62", "VID35", "VID74", "VID01", "VID56", "VID04", "VID13"
-            ]
+                "VID78",
+                "VID43",
+                "VID62",
+                "VID35",
+                "VID74",
+                "VID01",
+                "VID56",
+                "VID04",
+                "VID13",
+            ],
         }
 
         # Initialize the 'fold' column with -1

@@ -149,3 +149,6 @@ cython_debug/
 config_amin.yaml
 config_cluster.yaml
 test.py
+upload.sh
+download.sh
+runs/distill.sh

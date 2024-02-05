@@ -12,7 +12,7 @@ The "Self-Distilled-Swin" project presents a Swin Transformer model trained thro
 
 # 1- Environment set up
 
-* First create a new environment:
+* First, clone the repository and create a new environment:
 ```
 conda create -n sdswin python=3.7.0
 ```
@@ -74,96 +74,85 @@ Once the CholecT45.csv file is generated, the final CholecT45 folder structure s
     - CholecT45.csv
 
 
-
-# 3- Training
-Once the environment and the path to the dataset are settled, the method is a 3 steps process: Train a teacher model, generate soft-labels, train the student model.
-
-* **NOTE: Make sure to use the parameter `exp` in each experiment to give a tag to your experiments. For ex: `exp=teacher`.**
-
-
-### Step 1: Train a teacher model
-
+# 3- Pretrained models
+We provide a selection of pretrained models for public use. We have made available six pretrained models listed below:
 ```
-python main.py target_size=131 epochs=20 distill=false exp=teacher
+pretrained_models=('SwinT' 'SwinT+MultiT' 'SwinT+SelfDv2' 'SwinT+MultiT+SelfD' '+phase' 'SwinLarge')
 ```
-The checkpoints will be saved in the folder `output_dir/checkpoints` and the 5-Fold cross validation predictions in `output_dir/oofs`.
 
-### Step 2: Generate the soft-labels
-Make sure to use use same tags used when training the teacher model mainly `target_size` and `model_name`.
+You can run and evaluate all the pretrained models on the CholecT45 dataset using the command
+```bash
+bash run_pretrained_models.sh
 ```
-python generate.py inference=false target_size=131 exp=teacher
+
+To run a specific model, use the following command with the model name from the list above
+
+```python
+python generate.py inference=true pretrained_model=true save_folder=official_results exp=model_name_from_the_list
 ```
-The soft-labels will be saved in the folder `parent_path/CholecT45/soflabels`
-### Step 3: Train the student model
-```
-python main.py target_size=131 epochs=40 distill=true exp=student
-```
-The checkpoints will be saved in the folder `output_dir/checkpoints` and the 5-Fold cross validation predictions in `output_dir/oofs`.
+Results will be saved at `output_dir/official_results`
 
 # 4- Reproduce the paper experiments
-The paper experiments reproduction guide:
 
-### SwinT: 
-SwinT is a baseline Swin base transformer trained with only 100 triplets. To train using 100 triplets, set `target_size=100`.
-```
-python main.py target_size=100 epochs=20 distill=false exp=SwinT
-```
-### SwinT+Multi: 
-SwinT+Multi is a Swin base transformer baseline trained in a multitask learning fashion using additional instrument, verb, and target annotations. To use the additional annotations, set `target_size=131`.
-```
-python main.py target_size=131 epochs=20 distill=false exp=SwinT+MultiT
-```
-### SwinT+SelfD: 
-SwinT+SelfD is a Swin base transformer trained with self-distillation using soft-labels. Generate soft-labels first using:
-```
-python generate.py inference=false target_size=100 exp=SwinT
-```
-Then train the model using `distill=true`
+## Section 4 - Replicating the Research Experiments
+
+You can use the following parameters to run all the experiments described in the paper: `target_size`, `model_name`, and `exp`.
+
+**Note:** Variations in model training due to hardware setup may impact soft-labels generation and quality. Ideally, the teacher model should converge in the initial epochs; however, if not, it's advisable to stop teacher training using the `save_epoch` parameter for optimal results.
+
+### Train SwinT and SwinT+SelfD Experiments:
+```bash
+bash runs/run.sh target_size=100 save_epoch=3 exp=SwinT
 
 ```
-python main.py target_size=100 epochs=40 distill=true exp=SwinT+SelfD
+### Train SwinT+MulTI and SwinT+Multi+selfD
+```bash
+bash runs/run.sh target_size=131 save_epoch=3 exp=SwinT+MultiT
 ```
-### SwinT+MultiT+SelfD: 
-SwinT+MultiT+SelfD is a Swin base transformer trained using multitask learning and self-distillation. Generate soft-labels for the SwinT+MultiT model:
+### Train Multi+Phase
+```bash
+bash runs/run.sh target_size=138 save_epoch=3 exp=MultiT+phase
 ```
-python generate.py inference=false target_size=131 exp=SwinT+MultiT
+### Train SwinLarge
+```bash
+bash runs/run.sh `model_name=swin_large_patch4_window7_224` target_size=131 save_epoch=3 exp=SwinLarge
 ```
-Then, train the student model using `distill=true`
-```
-python main.py target_size=131 epochs=40 distill=true exp=SwinT+MultiT+SelfD
-```
-### Ensemble:
-The ensemble comprises three key components:
-
-* **SwinT+MultiT+SelfD Model**: This model represents the primary configuration discussed earlier in the README.
-
-* **SwinT+MultiT+SelfD Model with Phase Annotations:** To replicate this model, follow the same instructions as for the standard **SwinT+MultiT+SelfD** model, but set the `target_size=138` to accommodate the additional seven surgical phases.
-
-* **SwinT+MultiT+SelfD Model with Swin Transformer Large Backbone:** To replicate this variant, use the same steps as outlined for the standard **SwinT+MultiT+SelfD** model, but change the `model_name=swin_large_patch4_window7_224` to utilize the Swin Transformer large backbone. Additionally, this model employs label smoothing, so ensure you set the `smooth=true`.
 
 
 # 5- Inference
 To use saved checkpoints for inference, set `inference=true`
-```
+```python
 python generate.py inference=true target_size=100 exp=SwinT
 ```
 
 Ensure all five folds' checkpoints are available at `output_dir/checkpoints`. The predictions will be saved in `output_dir/predictions` folder.
 
-**Our model checkpoints will be made available shortly for public use**
 
 # 6- Evaluation
 Final predictions are saved either in the `output_dir/oofs` folder after training or the `output_dir/predictions` folder if generated during inference. To evaluate training predictions, set `inference=false`:
 
 
 
-```
+```python
 python evaluate.py inference=false
 ```
 To evaluate inference predictions, set `inference=true`
-```
+```python
 python evaluate.py inference=true
 ```
 All saved experiments in the respective folder will be evaluated.
 
-If testing the ensemble of multiple experiments, set `ensemble=true` add the relative path to those predictions in a list `ensemble_models=[ swin_bas_131_SwinT+MultiT+SelfD.csv, swin_bas_100_SwinT.csv]`
+If testing the ensemble of multiple experiments, set `ensemble=true` add the relative path to those predictions in a list `ensemble_models=[prediction1.csv,prediction2.csv,...]`
+
+# Citation
+
+# Cite via BibTex:
+
+@inproceedings{yamlahi2023self,
+title={Self-distillation for surgical action recognition},
+author={Yamlahi, Amine and Tran, Thuy Nuong and Godau, Patrick and Schellenberg, Melanie and Michael, Dominik and Smidt, Finn-Henri and N{"o}lke, Jan-Hinrich and Adler, Tim J and Tizabi, Minu Dietlinde and Nwoye, Chinedu Innocent and others},
+booktitle={International Conference on Medical Image Computing and Computer-Assisted Intervention},
+pages={637--646},
+year={2023},
+organization={Springer}
+}

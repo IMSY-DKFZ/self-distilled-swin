@@ -1,16 +1,13 @@
-import torch
 import os
-from torch.utils.data import DataLoader
 import hydra
 import warnings
 import pandas as pd
 
-from models import TripletModel
 from preprocess import get_folds
-from augmentation import get_transforms
-from dataset import TrainDataset
-from helper import inference_fn
+from helper import inference_fn, get_inference_loader
 from global_var import config_name
+from utils import save_predictions
+from models import get_pretrained_model
 
 warnings.filterwarnings("ignore")
 
@@ -31,10 +28,10 @@ def inference(CFG):
     """
 
     # Get folds and video ids
-    folds, vids = get_folds(CFG.n_fold, CFG)
+    folds, vids = get_folds(CFG)
 
     # Create soft labels folder
-    softlabels_dir = os.path.join(CFG.parent_path, "softlabels")
+    softlabels_dir = os.path.join(CFG.output_dir, "softlabels")
     if not os.path.exists(softlabels_dir):
         os.mkdir(softlabels_dir)
         print("./softlabels directory created!")
@@ -56,55 +53,14 @@ def inference(CFG):
     # Process each fold
     for fold in range(CFG.n_fold):
 
+        # Load pretrained weights
+        model = get_pretrained_model(fold, CFG)
 
-        # Load model
-        model = TripletModel(CFG, model_name=CFG.model_name, pretrained=False).to(
-            CFG.device
-        )
-
-        # Load the weights
-        weights_path = os.path.join(
-            CFG.output_dir,
-            f"checkpoints/fold{fold}_{CFG.model_name[:8]}_{CFG.target_size}_{CFG.exp}.pth",
-        )
-        model.load_state_dict(torch.load(weights_path)["model"])
-
-        if CFG.inference:
-            print(f"fold {fold}: Weights loaded successfully")
-        else:
-            print(f"fold {fold}: Weights loaded successfully")
-
-        # Get train and valid indexes
-        trn_idx = folds[folds["fold"] != fold].index
-        vld_idx = folds[folds["fold"] == fold].index
-
-        # Get train dataframe for training or validation set based on inference mode
-        inference_folds = (
-            folds.loc[vld_idx].reset_index(drop=True)
-            if CFG.inference
-            else folds.loc[trn_idx].reset_index(drop=True)
-        )
-
-        # Pytorch dataset
-        inference_dataset = TrainDataset(
-            inference_folds,
-            transform=get_transforms(CFG=CFG, data="valid"),
-            inference=True,
-            CFG=CFG,
-        )
-
-        # Pytorch dataloader
-        inference_loader = DataLoader(
-            inference_dataset,
-            batch_size=CFG.valid_batch_size,
-            shuffle=False,
-            num_workers=CFG.nworkers,
-            pin_memory=False,
-            drop_last=False,
-        )
+        # Get inference loader
+        inference_folds, inference_loader = get_inference_loader(CFG, fold, folds)
 
         # Inference loop
-        preds = inference_fn(inference_loader, model, CFG.device)
+        preds = inference_fn(CFG, inference_loader, model, CFG.device)
 
         # Load and save preds
         inference_folds[[str(c) for c in range(CFG.target_size)]] = preds
@@ -116,21 +72,14 @@ def inference(CFG):
         else:
             # Save soft-labels
             save_path = os.path.join(
-                CFG.parent_path,
+                CFG.output_dir,
                 f"softlabels/sl_f{fold}_{CFG.model_name[:8]}_{CFG.target_size}.csv",
             )
             inference_folds.to_csv(save_path)
-    
-    print("\033[94mSaving...\033[0m")
-    if CFG.inference:
-        preds_save_path = os.path.join(
-            CFG.output_dir,
-            f"predictions/{CFG.model_name[:8]}_{CFG.target_size}_{CFG.exp}.csv",
-        )
-        pred_df.to_csv(preds_save_path)
-        print(f"Predictions saved at {preds_save_path}")
-    else:
-        print(f"Soft labels saved at {save_path}")
+            print(f"Soft labels saved at {save_path}")
+
+    # Save final predictions of pretrained and custom models
+    save_predictions(CFG, pred_df)
 
 
 # Run the code

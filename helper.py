@@ -5,6 +5,10 @@ import torch
 import os
 import pandas as pd
 from torch.utils.data import DataLoader
+from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
+import torch.nn as nn
+from torch.optim import Adam
+
 
 from augmentation import get_transforms
 from dataset import TrainDataset
@@ -38,6 +42,30 @@ class AverageMeter(object):
         self.sum += val * n
         self.count += n
         self.avg = self.sum / self.count
+
+
+def compile_model(CFG, model):
+    # Optimizer, scheduler and criterion
+    optimizer = Adam(
+        model.parameters(),
+        lr=CFG.lr,
+        weight_decay=CFG.weight_decay,
+        amsgrad=False,
+    )
+
+    # Cosine annealing scheduler
+    scheduler = CosineAnnealingWarmRestarts(
+        optimizer,
+        T_0=CFG.T_0,
+        T_mult=1,
+        eta_min=CFG.min_lr,
+        last_epoch=-1,
+    )
+
+    # Binary cross entropy loss function
+    criterion = nn.BCEWithLogitsLoss(reduction="sum").to(CFG.device)
+
+    return optimizer, scheduler, criterion
 
 
 def train_fn(
@@ -163,6 +191,7 @@ def valid_fn(valid_loader, model, CFG, criterion, device):
 
 
 def inference_fn(
+    CFG,
     valid_loader,
     model,
     device,
@@ -194,7 +223,11 @@ def inference_fn(
         with torch.no_grad():
             y_preds = model(images)
 
-        preds.append(y_preds.sigmoid().to("cpu").numpy())
+        # Apply sigmoid to soft-labels only
+        if CFG.inference:
+            preds.append(y_preds.to("cpu").numpy())
+        else:
+            preds.append(y_preds.sigmoid().to("cpu").numpy())
 
     # Concatenate predictions
     predictions = np.concatenate(preds)
@@ -215,7 +248,7 @@ def apply_self_distillation(fold, train_folds, CFG):
     """
     # Read soft labels
     soft_labels_path = os.path.join(
-        CFG.parent_path,
+        CFG.output_dir,
         f"softlabels/sl_f{fold}_{CFG.model_name[:8]}_{CFG.target_size}.csv",
     )
     train_softs = pd.read_csv(soft_labels_path)
@@ -225,7 +258,9 @@ def apply_self_distillation(fold, train_folds, CFG):
     sl_pred0_idx = train_softs.columns.get_loc("0")
 
     # Reorder train soft labels to match the train labels order
-    train_softs = train_softs.merge(train_folds[["image_id"]], on="image_id", how="right")
+    train_softs = train_softs.merge(
+        train_folds[["image_id"]], on="image_id", how="right"
+    )
 
     # Apply self-distillation: Default SD=1
     tri_range = slice(tri0_idx, tri0_idx + CFG.target_size)
@@ -293,9 +328,6 @@ def get_dataloaders(train_folds, valid_folds, CFG):
     return train_loader, valid_loader
 
 
-import pandas as pd
-
-
 def get_dataframes(folds, fold):
     """
     Split the provided DataFrame into train and validation sets based on the given fold index.
@@ -324,3 +356,36 @@ def get_dataframes(folds, fold):
     temp = folds.loc[val_idx].reset_index(drop=True)
 
     return train_folds, valid_folds, temp
+
+
+def get_inference_loader(CFG, fold, folds):
+    # Get train and valid indexes
+    trn_idx = folds[folds["fold"] != fold].index
+    vld_idx = folds[folds["fold"] == fold].index
+
+    # Get train dataframe for training or validation set based on inference mode
+    inference_folds = (
+        folds.loc[vld_idx].reset_index(drop=True)
+        if CFG.inference
+        else folds.loc[trn_idx].reset_index(drop=True)
+    )
+
+    # Pytorch dataset
+    inference_dataset = TrainDataset(
+        inference_folds,
+        transform=get_transforms(CFG=CFG, data="valid"),
+        inference=True,
+        CFG=CFG,
+    )
+
+    # Pytorch dataloader
+    inference_loader = DataLoader(
+        inference_dataset,
+        batch_size=CFG.valid_batch_size,
+        shuffle=False,
+        num_workers=CFG.nworkers,
+        pin_memory=False,
+        drop_last=False,
+    )
+
+    return inference_folds, inference_loader

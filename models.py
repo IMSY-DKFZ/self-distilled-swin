@@ -2,11 +2,9 @@ import torch
 import torch.nn as nn
 import timm
 import torch.nn.functional as F
+import os
 
-
-import torch
-import torch.nn as nn
-import timm
+from utils import update_model_config
 
 
 class TripletModel(nn.Module):
@@ -39,10 +37,10 @@ class TripletModel(nn.Module):
 
         if CFG.local_weight:
             self.model.load_state_dict(
-            torch.load(f"{CFG.weight_dir}/swin_base_patch4_window7_224_22kto1k.pth")[
-                "model"
-            ]
-        )
+                torch.load(
+                    f"{CFG.weight_dir}/swin_base_patch4_window7_224_22kto1k.pth"
+                )["model"]
+            )
 
         # Get the number features in final embedding
         n_features = self.model.head.in_features
@@ -63,3 +61,61 @@ class TripletModel(nn.Module):
         """
         x = self.model(x)
         return x
+
+
+def get_pretrained_model(fold, CFG):
+    """
+    Load a pretrained model or custom weights based on the specified configuration.
+
+    Args:
+        fold (int): The fold number.
+        CFG (config object): Configuration object containing model settings.
+
+    Returns:
+        torch.nn.Module: The loaded model.
+    """
+
+    # Available pretrained models
+    pretrained_models = [
+        "SwinT",
+        "SwinT+MultiT",
+        "SwinT+SelfDv2",
+        "SwinT+MultiT+SelfD",
+        "+phase",
+        "SwinLarge",
+    ]
+
+    # Update target size and model name if pretrained_model is True
+    if CFG.pretrained_model:
+        update_model_config(CFG)
+
+    # Initialize the model
+    model = TripletModel(CFG, model_name=CFG.model_name, pretrained=False).to(
+        CFG.device
+    )
+
+    # Download pretrained weights or load custom weights
+    if CFG.pretrained_model:
+        if CFG.exp not in pretrained_models:
+            raise Exception(
+                f"Requested model: exp={CFG.exp} is not available, please select one of the available models:\n{pretrained_models}"
+            )
+
+        # Update the fold and exp tag to match the experiment
+        checkpoint_url = f"https://s3.cos.dkfz-heidelberg.de/self-distillation-weights/fold{fold}_{CFG.exp}.pth"
+        checkpoint = torch.hub.load_state_dict_from_url(checkpoint_url, progress=True)
+        model.load_state_dict(checkpoint["model"])
+
+        print(f"fold {fold}: Pretrained Weights downloaded and loaded successfully")
+
+    else:
+
+        # Load your custom weights
+        weights_path = os.path.join(
+            CFG.output_dir,
+            f"checkpoints/fold{fold}_{CFG.model_name[:8]}_{CFG.target_size}_{CFG.exp}.pth",
+        )
+        model.load_state_dict(torch.load(weights_path)["model"])
+        print(f"fold {fold}: Weights loaded successfully")
+
+    return model
