@@ -56,7 +56,7 @@ def compile_model(CFG, model):
     # Cosine annealing scheduler
     scheduler = CosineAnnealingWarmRestarts(
         optimizer,
-        T_0=CFG.T_0,
+        T_0=(CFG.epochs +1),
         T_mult=1,
         eta_min=CFG.min_lr,
         last_epoch=-1,
