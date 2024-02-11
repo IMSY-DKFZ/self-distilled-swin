@@ -102,7 +102,7 @@ def get_pretrained_model(fold, CFG):
             )
 
         # Update the fold and exp tag to match the experiment
-        checkpoint_url = f"https://s3.cos.dkfz-heidelberg.de/self-distillation-weights/fold{fold}_{CFG.exp}.pth"
+        checkpoint_url=f"https://self-distillation-weights.s3.dkfz.de/fold{fold}_{CFG.exp}.pth"
         checkpoint = torch.hub.load_state_dict_from_url(checkpoint_url, progress=True)
         model.load_state_dict(checkpoint["model"])
 
