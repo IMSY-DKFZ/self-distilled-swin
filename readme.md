@@ -82,7 +82,7 @@ pretrained_models=('SwinT' 'SwinT+MultiT' 'SwinT+SelfDv2' 'SwinT+MultiT+SelfD' '
 
 You can run and evaluate all the pretrained models on the CholecT45 dataset using the command
 ```bash
-bash run_pretrained_models.sh
+bash runs/run_pretrained_models.sh
 ```
 
 To run a specific model, use the following command with the model name from the list above
