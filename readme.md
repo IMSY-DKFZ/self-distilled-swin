@@ -15,6 +15,7 @@ The "Self-Distilled-Swin" project presents a Swin Transformer model trained thro
 * First, clone the repository and create a new environment:
 ```
 conda create -n sdswin python=3.7.0
+conda activate sdswin
 ```
 * Next, cd to the repo folder and install the requirements.txt file
 ```
