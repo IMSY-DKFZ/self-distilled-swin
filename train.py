@@ -46,6 +46,9 @@ def train_fnt(CFG):
 
     print_training_info(folds, CFG)
 
+    # Start empty list to store cross validation scores
+    CV_scores = []
+
     # Loop over the folds
     for fold in range(CFG.n_fold):
 
@@ -171,6 +174,7 @@ def train_fnt(CFG):
 
             # CholecT45 official metric
             cholect45_fold_CV = per_epoch_ivtmetrics(valid_folds, CFG)
+            CV_scores.append(cholect45_fold_CV)
 
             # Print fold metrics
             fold_header = f"{'=' * 20} Fold {fold} {'=' * 20}"
@@ -196,7 +200,8 @@ def train_fnt(CFG):
     overall_mAP = compute_mAP_score(oof_df)
 
     # Get the final cross-validation score based on ivtmetrics
-    cholect45_final_CV = cholect45_ivtmetrics_mAP(oof_df, CFG)
+    # cholect45_final_CV = cholect45_ivtmetrics_mAP(oof_df, CFG)
+    cholect45_final_CV = np.mean(np.array([CV_scores]))
 
     # Print final metrics
     print(

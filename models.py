@@ -31,22 +31,13 @@ class TripletModel(nn.Module):
         """
         Models class to return swin transformer models
         """
-
+        self.CFG = CFG
         # Load the backbone
-        self.model = timm.create_model(model_name, pretrained=pretrained)
-
-        if CFG.local_weight:
-            self.model.load_state_dict(
-                torch.load(
-                    f"{CFG.weight_dir}/swin_base_patch4_window7_224_22kto1k.pth"
-                )["model"]
-            )
-
-        # Get the number features in final embedding
-        n_features = self.model.head.in_features
-
-        # Update the classification layer with our custom target size
-        self.model.head = nn.Linear(n_features, CFG.target_size)
+        self.model = timm.create_model(
+            model_name,
+            pretrained=pretrained,
+            num_classes=CFG.target_size,
+        )
 
     def forward(self, x):
         """
@@ -60,7 +51,10 @@ class TripletModel(nn.Module):
 
         """
         x = self.model(x)
+
+
         return x
+
 
 
 def get_pretrained_model(fold, CFG):
