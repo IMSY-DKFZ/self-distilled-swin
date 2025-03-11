@@ -3,9 +3,10 @@ import os
 import random
 import numpy as np
 import torch
-import ivtmetrics
+# import ivtmetrics
 from sklearn.metrics import average_precision_score
 import neptune.new as neptune
+from torchmetrics import AveragePrecision as AP
 
 
 def seed_torch(seed=42):
@@ -71,6 +72,58 @@ def logging_to_neptune(CFG):
     return run
 
 
+# def cholect45_ivtmetrics_mAP(df, CFG):
+#     """
+#     Compute the official CholecT45 mAP score.
+
+#     Takes a dataframe with ground truth triplets and predictions.
+
+#     Metric calculation:
+#     - Aggregate per video over each fold
+#     - Mean of 5 folds
+
+#     Parameters:
+#     - df (pd.DataFrame): DataFrame with ground truth triplets and predictions.
+#     - CFG (object): Configuration object containing hyperparameters.
+
+#     Returns:
+#     float: Mean mAP value over 5 folds.
+
+#     """
+#     # Get the indexes of the 1st triplet/prediction columns
+#     tri0_idx = int(df.columns.get_loc("tri0"))
+#     pred0_idx = int(df.columns.get_loc("0"))
+
+#     # Initiate empty list to store the folds mAP
+#     ivt = []
+
+#     # Loop over the 5 folds
+#     for fold in range(CFG.n_fold):
+#         # Initialize the ivt metric
+#         rec = ivtmetrics.Recognition(num_class=100)
+
+#         # Filter the fold and its corresponding videos
+#         fold_df = df[df["fold"] == fold]
+#         vids = fold_df.video.unique()
+
+#         # Loop over the videos
+#         for i, v in enumerate(vids):
+#             # Filter the video
+#             vid_df = fold_df[fold_df["video"] == v]
+
+#             rec.update(
+#                 vid_df.iloc[:, tri0_idx : tri0_idx + 100].values,
+#                 vid_df.iloc[:, pred0_idx : pred0_idx + 100].values,
+#             )
+
+#             rec.video_end()
+
+#         # Get the final mAP score for the fold
+#         ivt.append(rec.compute_video_AP("ivt")["mAP"])
+
+#     # Return the mean mAP value over 5 folds
+#     return np.mean(ivt)
+
 def cholect45_ivtmetrics_mAP(df, CFG):
     """
     Compute the official CholecT45 mAP score.
@@ -98,75 +151,128 @@ def cholect45_ivtmetrics_mAP(df, CFG):
 
     # Loop over the 5 folds
     for fold in range(CFG.n_fold):
-        # Initialize the ivt metric
-        rec = ivtmetrics.Recognition(num_class=100)
 
         # Filter the fold and its corresponding videos
         fold_df = df[df["fold"] == fold]
         vids = fold_df.video.unique()
 
-        # Loop over the videos
-        for i, v in enumerate(vids):
-            # Filter the video
-            vid_df = fold_df[fold_df["video"] == v]
-
-            rec.update(
-                vid_df.iloc[:, tri0_idx : tri0_idx + 100].values,
-                vid_df.iloc[:, pred0_idx : pred0_idx + 100].values,
-            )
-
-            rec.video_end()
+        
+        # Compute using the ivtmetrics aggregation
+        fold_mAP = per_epoch_ivtmetrics(fold_df, CFG)
 
         # Get the final mAP score for the fold
-        ivt.append(rec.compute_video_AP("ivt")["mAP"])
+        ivt.append(fold_mAP)
 
     # Return the mean mAP value over 5 folds
     return np.mean(ivt)
 
 
+# def per_epoch_ivtmetrics(fold_df, CFG):
+#     """
+#     Compute per-epoch ivtmetrics.
+
+#     Parameters:
+#     - fold_df (pd.DataFrame): DataFrame with ground truth triplets and predictions for a fold.
+#     - CFG (object): Configuration object containing hyperparameters.
+
+#     Returns:
+#     float: mAP score for the given fold.
+
+#     Example:
+#     ```python
+#     epoch_mAP = per_epoch_ivtmetrics(fold_df, CFG)
+#     ```
+
+#     """
+#     # Get the indexes of the 1st triplet/prediction columns
+#     tri0_idx = int(fold_df.columns.get_loc("tri0"))
+#     pred0_idx = int(fold_df.columns.get_loc("0"))
+
+#     # Initialize the ivt metric
+#     rec = ivtmetrics.Recognition(num_class=100)
+
+#     # Get unique videos
+#     vids = fold_df.video.unique()
+
+#     # Loop over the videos
+#     for i, v in enumerate(vids):
+#         # Filter the video
+#         vid_df = fold_df[fold_df["video"] == v]
+
+#         rec.update(
+#             vid_df.iloc[:, tri0_idx : tri0_idx + 100].values,
+#             vid_df.iloc[:, pred0_idx : pred0_idx + 100].values,
+#         )
+
+#         rec.video_end()
+
+#     # Get the final mAP score
+#     mAP = rec.compute_video_AP("ivt")["mAP"]
+
+#     return mAP
+
 def per_epoch_ivtmetrics(fold_df, CFG):
-    """
-    Compute per-epoch ivtmetrics.
 
-    Parameters:
-    - fold_df (pd.DataFrame): DataFrame with ground truth triplets and predictions for a fold.
-    - CFG (object): Configuration object containing hyperparameters.
-
-    Returns:
-    float: mAP score for the given fold.
-
-    Example:
-    ```python
-    epoch_mAP = per_epoch_ivtmetrics(fold_df, CFG)
-    ```
-
-    """
     # Get the indexes of the 1st triplet/prediction columns
-    tri0_idx = int(fold_df.columns.get_loc("tri0"))
+    tri0_idx = int(fold_df.columns.get_loc(CFG.col0))
     pred0_idx = int(fold_df.columns.get_loc("0"))
 
-    # Initialize the ivt metric
-    rec = ivtmetrics.Recognition(num_class=100)
+    # Empty list to stack the [100 predictions] of each video
+    all_classwise_stack = []
 
-    # Get unique videos
+    # Get the fold's corresponding videos
     vids = fold_df.video.unique()
 
     # Loop over the videos
     for i, v in enumerate(vids):
+
         # Filter the video
         vid_df = fold_df[fold_df["video"] == v]
 
-        rec.update(
-            vid_df.iloc[:, tri0_idx : tri0_idx + 100].values,
-            vid_df.iloc[:, pred0_idx : pred0_idx + 100].values,
+        torch_ap = AP(
+            task="multilabel", num_labels=CFG.metric_tsize, average="none"
+        ).to(CFG.device)
+
+        # Metric
+        classwise = torch_ap(
+            torch.tensor(
+                vid_df.iloc[:, pred0_idx : pred0_idx + CFG.metric_tsize].values
+            ).to(CFG.device),
+            torch.tensor(vid_df.iloc[:, tri0_idx : tri0_idx + CFG.metric_tsize].values)
+            .long()
+            .to(CFG.device),
         )
 
-        rec.video_end()
+        # Append the [100 predictions] of each video
+        all_classwise_stack.append(classwise.cpu())
 
-    # Get the final mAP score
-    mAP = rec.compute_video_AP("ivt")["mAP"]
+    ### Calculate the mean of each category: [100 predictions]
+    all_scores_fold = []
 
-    return mAP
+    # Loop over the Predictions of each video
+    # print(len(all_classwise_stack))
+    for j in range(len(all_classwise_stack[0])):  # (j: 0 -> 100)
+
+        # Filter the j element of the [100 predictions] of each video
+        xclass = [all_classwise_stack[vidx][j] for vidx in range(len(vids))]
+
+        # Convert -0.0 to NaN
+        xclass_NaN = [np.nan if x == -0.0 else x for x in xclass]
+
+        # Mean of the triplet in the videos
+        xclass_mean = np.nanmean(np.array(xclass_NaN))
+
+        # Append the triplet score to the list until we have all the 100 triplets
+        all_scores_fold.append(xclass_mean)
+
+    # print(f"Fold mAP score: {np.nanmean(xclass_mean)}")
+
+    # Mean of the 100 triplets
+    overall_mAP = np.nanmean(np.array(all_scores_fold))
+
+
+    return overall_mAP
+
 
 
 def compute_mAP_score(valid_folds):
