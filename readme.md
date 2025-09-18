@@ -2,7 +2,7 @@
 
 This repo serves as reproduction code for the following papers:
 * **[Self-Distillation for Surgical Action Recognition](https://arxiv.org/abs/2303.12915)** see, [ArXiV](https://arxiv.org/abs/2303.12915) to be published at MICCAI 2023. To reproduce the results of this paper please check the tag miccai23.
-* **[Smarter Self-distillation: Optimizing the Teacher For Surgical Video](https://papers.miccai.org/miccai-2025/paper/1323_paper.pdf) Applications**: This is the recent paper published at the MICCAI 2025 conference, check [preprint](https://papers.miccai.org/miccai-2025/paper/1323_paper.pdf)
+* **[Smarter Self-distillation: Optimizing the Teacher For Surgical Video Applications](https://papers.miccai.org/miccai-2025/paper/1323_paper.pdf)**: This is the recent paper published at the MICCAI 2025 conference, check [preprint](https://papers.miccai.org/miccai-2025/paper/1323_paper.pdf)
 
 The new version with reproduction code for the [MICCAI 2025 paper](https://papers.miccai.org/miccai-2025/paper/1323_paper.pdf) addresses a reproducibility issue found in the [MICCAI 2023 paper](https://arxiv.org/abs/2303.12915) which used self-distillation with a sub-optimal teacher (without teacher selection). This updated release introduces two key features:
 * A teacher selection step to identify the best teacher model (checkpoint) for distillation
